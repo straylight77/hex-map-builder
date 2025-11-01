@@ -8,7 +8,8 @@ const HEX_HEIGHT = HEX_SIZE * 2;
 
 // Terrain tile definitions
 const TERRAIN_TILES = [
-  { id: 'plains', name: 'Plains', color: '#90EE90', pattern: 'solid' },
+  { id: 'plains', name: 'Plains', color: '#9ACD32', pattern: 'solid' },
+  { id: 'farmland', name: 'Farmland', color: '#9ACD32', pattern: 'farmland' },
   { id: 'forest', name: 'Forest', color: '#228B22', pattern: 'trees' },
   { id: 'dense-forest', name: 'Dense Forest', color: '#1a5c1a', pattern: 'dense-trees' },
   { id: 'hills', name: 'Hills', color: '#D2B48C', pattern: 'wavy' },
@@ -85,10 +86,52 @@ function drawPattern(ctx, x, y, pattern, size, color) {
   const scale = 1.3;
   
   switch(pattern) {
+    case 'farmland':
+      // 2x2 grid rotated 45 degrees with alternating line directions
+      ctx.strokeStyle = '#8B6914'; // Brown color
+      ctx.lineWidth = 2.5; // Thicker lines
+      
+      // Define the 4 quadrants (rotated 45 degrees)
+      const quadrants = [
+        { cx: x - 15 * scale, cy: y - 15 * scale, rotation: 0 },      // Top-left: horizontal
+        { cx: x + 15 * scale, cy: y - 15 * scale, rotation: Math.PI/2 }, // Top-right: vertical
+        { cx: x - 15 * scale, cy: y + 15 * scale, rotation: Math.PI/2 }, // Bottom-left: vertical
+        { cx: x + 15 * scale, cy: y + 15 * scale, rotation: 0 }       // Bottom-right: horizontal
+      ];
+      
+      quadrants.forEach(({ cx, cy, rotation }) => {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rotation);
+        
+        // Draw 3 parallel lines in each quadrant
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.moveTo(-12 * scale, i * 6 * scale);
+          ctx.lineTo(12 * scale, i * 6 * scale);
+          ctx.stroke();
+        }
+        
+        ctx.restore();
+      });
+      break;
+    
     case 'peaks':
+      // Two rows: 3 on bottom, 2 on top (with more spacing)
+      // Bottom row
       for (let i = 0; i < 3; i++) {
         const px = x - 26 * scale + i * 26 * scale;
-        const py = y + 13 * scale;
+        const py = y + 18 * scale; // Moved down
+        ctx.beginPath();
+        ctx.moveTo(px - 10 * scale, py + 10 * scale);
+        ctx.lineTo(px, py - 10 * scale);
+        ctx.lineTo(px + 10 * scale, py + 10 * scale);
+        ctx.stroke();
+      }
+      // Top row (2 peaks, offset)
+      for (let i = 0; i < 2; i++) {
+        const px = x - 13 * scale + i * 26 * scale;
+        const py = y - 15 * scale; // Moved up
         ctx.beginPath();
         ctx.moveTo(px - 10 * scale, py + 10 * scale);
         ctx.lineTo(px, py - 10 * scale);
@@ -146,37 +189,52 @@ function drawPattern(ctx, x, y, pattern, size, color) {
       break;
       
     case 'trees':
-      const positions = [[-20, -7], [0, -13], [20, -7], [-13, 13], [13, 13]];
+      // Spread out more for better tiling - all same size
+      const positions = [
+        [-25, -10], [-8, -18], [8, -10], [25, -2],
+        [-17, 8], [0, 3], [17, 8],
+        [-8, 20], [8, 20]
+      ];
+      const treeSize = 5; // Consistent size
       positions.forEach(([px, py]) => {
         ctx.beginPath();
-        ctx.moveTo(x + px * scale - 5 * scale, y + py * scale + 8 * scale);
+        ctx.moveTo(x + px * scale - treeSize * scale, y + py * scale + 8 * scale);
         ctx.lineTo(x + px * scale, y + py * scale - 8 * scale);
-        ctx.lineTo(x + px * scale + 5 * scale, y + py * scale + 8 * scale);
+        ctx.lineTo(x + px * scale + treeSize * scale, y + py * scale + 8 * scale);
         ctx.closePath();
         ctx.fill();
       });
       break;
       
     case 'dense-trees':
-      const densePos = [[-24, -11], [-8, -16], [8, -11], [24, -5], [-20, 7], [0, 3], [20, 7], [-11, 20], [11, 20]];
+      // More spread out and same size as regular forest
+      const densePos = [
+        [-28, -15], [-14, -20], [0, -24], [14, -20], [28, -15],
+        [-21, -5], [-7, -8], [7, -8], [21, -5],
+        [-14, 5], [0, 2], [14, 5],
+        [-21, 15], [-7, 18], [7, 18], [21, 15],
+        [-14, 25], [0, 28], [14, 25]
+      ];
+      const denseTreeSize = 5; // Same size as regular forest
       densePos.forEach(([px, py]) => {
         ctx.beginPath();
-        ctx.moveTo(x + px * scale - 4 * scale, y + py * scale + 7 * scale);
-        ctx.lineTo(x + px * scale, y + py * scale - 7 * scale);
-        ctx.lineTo(x + px * scale + 4 * scale, y + py * scale + 7 * scale);
+        ctx.moveTo(x + px * scale - denseTreeSize * scale, y + py * scale + 8 * scale);
+        ctx.lineTo(x + px * scale, y + py * scale - 8 * scale);
+        ctx.lineTo(x + px * scale + denseTreeSize * scale, y + py * scale + 8 * scale);
         ctx.closePath();
         ctx.fill();
       });
       break;
       
     case 'waves':
+      // Centered water waves (3 lines like shallow/deep water)
       for (let i = 0; i < 3; i++) {
         const py = y - 20 * scale + i * 20 * scale;
         ctx.beginPath();
-        ctx.moveTo(x - 33 * scale, py);
-        for (let j = 0; j < 4; j++) {
-          const cx = x - 33 * scale + j * 20 * scale;
-          ctx.quadraticCurveTo(cx + 5 * scale, py - 5 * scale, cx + 9 * scale, py);
+        ctx.moveTo(x - 30 * scale, py);
+        for (let j = 0; j < 3; j++) {
+          const cx = x - 30 * scale + j * 20 * scale;
+          ctx.quadraticCurveTo(cx + 7 * scale, py - 5 * scale, cx + 10 * scale, py);
           ctx.quadraticCurveTo(cx + 13 * scale, py + 5 * scale, cx + 20 * scale, py);
         }
         ctx.stroke();
@@ -198,6 +256,8 @@ function drawPattern(ctx, x, y, pattern, size, color) {
       break;
       
     case 'rough-waves':
+      // Use light blue color for deep water pattern
+      ctx.strokeStyle = '#87CEEB';
       for (let i = 0; i < 4; i++) {
         const py = y - 20 * scale + i * 13 * scale;
         ctx.beginPath();
@@ -238,6 +298,45 @@ function drawPattern(ctx, x, y, pattern, size, color) {
   ctx.globalAlpha = 1.0;
 }
 
+function TilePreview({ tile, size }) {
+  const canvasRef = useRef(null);
+  
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Create a larger temporary canvas at full size
+    const fullSize = HEX_SIZE;
+    const tempCanvas = document.createElement('canvas');
+    const tempSize = fullSize * 3;
+    tempCanvas.width = tempSize;
+    tempCanvas.height = tempSize;
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    // Draw the tile at full size on temp canvas
+    tempCtx.save();
+    tempCtx.translate(tempSize / 2, tempSize / 2);
+    drawHex(tempCtx, 0, 0, fullSize, tile.color, true, '#555', 2);
+    if (tile.pattern !== 'solid') {
+      drawPattern(tempCtx, 0, 0, tile.pattern, fullSize, tile.pattern === 'rough-waves' ? '#87CEEB' : '#000');
+    }
+    tempCtx.restore();
+    
+    // Scale down and draw to preview canvas
+    canvas.width = size * 2;
+    canvas.height = size * 2;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw the scaled-down version
+    ctx.drawImage(tempCanvas, 0, 0, tempSize, tempSize, 0, 0, canvas.width, canvas.height);
+    
+  }, [tile, size]);
+  
+  return <canvas ref={canvasRef} className="w-16 h-16" />;
+}
+
 export default function HexMapBuilder() {
   const canvasRef = useRef(null);
   const [mapData, setMapData] = useState(new Map());
@@ -247,7 +346,6 @@ export default function HexMapBuilder() {
   const [selectedTile, setSelectedTile] = useState('plains');
   const [libraryVisible, setLibraryVisible] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
-  const [showMapControls, setShowMapControls] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [menuOpen, setMenuOpen] = useState(null);
@@ -375,6 +473,13 @@ export default function HexMapBuilder() {
         ...prev,
         scale: Math.max(0.3, Math.min(3, prev.scale * delta))
       }));
+    } else {
+      // Two-finger trackpad pan (touchpad scrolling)
+      setViewport(prev => ({
+        ...prev,
+        x: prev.x - e.deltaX,
+        y: prev.y - e.deltaY
+      }));
     }
   };
 
@@ -418,7 +523,7 @@ export default function HexMapBuilder() {
   };
 
   const clearMap = () => {
-    if (confirm('Clear the entire map? This cannot be undone.')) {
+    if (window.confirm('Are you sure you want to clear the entire map? This cannot be undone.')) {
       setMapData(new Map());
       setDimensions({ width: 20, height: 20 });
       resetZoom();
@@ -579,9 +684,6 @@ export default function HexMapBuilder() {
               <button onClick={() => setLibraryVisible(!libraryVisible)} className="w-full px-4 py-2 text-left hover:bg-gray-100 whitespace-nowrap">
                 {libraryVisible ? '✓' : ' '} Show Tile Library
               </button>
-              <button onClick={() => setShowMapControls(!showMapControls)} className="w-full px-4 py-2 text-left hover:bg-gray-100 whitespace-nowrap">
-                {showMapControls ? '✓' : ' '} Show Map Controls
-              </button>
             </div>
           )}
         </div>
@@ -613,19 +715,15 @@ export default function HexMapBuilder() {
           
           <div className="border-t border-gray-300 w-full my-2"></div>
           
-          {showMapControls && (
-            <>
-              <button onClick={() => handleZoom(0.1)} className="p-3 hover:bg-gray-100 rounded" title="Zoom In">
-                <Plus size={24} />
-              </button>
-              <button onClick={() => handleZoom(-0.1)} className="p-3 hover:bg-gray-100 rounded" title="Zoom Out">
-                <Minus size={24} />
-              </button>
-              <button onClick={resetZoom} className="p-3 hover:bg-gray-100 rounded" title="Reset View">
-                <RotateCcw size={24} />
-              </button>
-            </>
-          )}
+          <button onClick={() => handleZoom(0.1)} className="p-3 hover:bg-gray-100 rounded" title="Zoom In">
+            <Plus size={24} />
+          </button>
+          <button onClick={() => handleZoom(-0.1)} className="p-3 hover:bg-gray-100 rounded" title="Zoom Out">
+            <Minus size={24} />
+          </button>
+          <button onClick={resetZoom} className="p-3 hover:bg-gray-100 rounded" title="Reset View">
+            <RotateCcw size={24} />
+          </button>
         </div>
 
         <div className="flex-1 relative">
@@ -651,21 +749,21 @@ export default function HexMapBuilder() {
             </div>
             <div className="flex-1 overflow-y-auto p-4">
               <div className="grid grid-cols-2 gap-3">
-                {TERRAIN_TILES.map(tile => (
-                  <button
-                    key={tile.id}
-                    onClick={() => { setSelectedTile(tile.id); setSelectedTool('paint'); }}
-                    className={`flex flex-col items-center p-3 rounded border-2 transition-all ${
-                      selectedTile === tile.id ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                  >
-                    <div
-                      className="w-16 h-16 rounded"
-                      style={{ backgroundColor: tile.color }}
-                    />
-                    <span className="text-xs mt-2 text-center">{tile.name}</span>
-                  </button>
-                ))}
+                {TERRAIN_TILES.map(tile => {
+                  const canvasId = `tile-preview-${tile.id}`;
+                  return (
+                    <button
+                      key={tile.id}
+                      onClick={() => { setSelectedTile(tile.id); setSelectedTool('paint'); }}
+                      className={`flex flex-col items-center p-3 rounded border-2 transition-all ${
+                        selectedTile === tile.id ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <TilePreview tile={tile} size={60} />
+                      <span className="text-xs mt-2 text-center">{tile.name}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
