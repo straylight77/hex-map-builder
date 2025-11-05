@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Hand, Pencil, Eraser, Plus, Minus, RotateCcw, ChevronRight, ChevronLeft, Grid3x3 } from 'lucide-react';
+import { Hand, Pencil, Eraser, Plus, Minus, RotateCcw, ChevronRight, ChevronLeft, Grid3x3, Landmark, Route, Waves } from 'lucide-react';
 
 // Hex math utilities
 const HEX_SIZE = 70;
@@ -87,16 +87,14 @@ function drawPattern(ctx, x, y, pattern, size, color) {
   
   switch(pattern) {
     case 'farmland':
-      // 2x2 grid rotated 45 degrees with alternating line directions
-      ctx.strokeStyle = '#8B6914'; // Brown color
-      ctx.lineWidth = 2.5; // Thicker lines
+      ctx.strokeStyle = '#8B6914';
+      ctx.lineWidth = 2.5;
       
-      // Define the 4 quadrants (rotated 45 degrees)
       const quadrants = [
-        { cx: x - 15 * scale, cy: y - 15 * scale, rotation: 0 },      // Top-left: horizontal
-        { cx: x + 15 * scale, cy: y - 15 * scale, rotation: Math.PI/2 }, // Top-right: vertical
-        { cx: x - 15 * scale, cy: y + 15 * scale, rotation: Math.PI/2 }, // Bottom-left: vertical
-        { cx: x + 15 * scale, cy: y + 15 * scale, rotation: 0 }       // Bottom-right: horizontal
+        { cx: x - 15 * scale, cy: y - 15 * scale, rotation: 0 },
+        { cx: x + 15 * scale, cy: y - 15 * scale, rotation: Math.PI/2 },
+        { cx: x - 15 * scale, cy: y + 15 * scale, rotation: Math.PI/2 },
+        { cx: x + 15 * scale, cy: y + 15 * scale, rotation: 0 }
       ];
       
       quadrants.forEach(({ cx, cy, rotation }) => {
@@ -104,7 +102,6 @@ function drawPattern(ctx, x, y, pattern, size, color) {
         ctx.translate(cx, cy);
         ctx.rotate(rotation);
         
-        // Draw 3 parallel lines in each quadrant
         for (let i = -1; i <= 1; i++) {
           ctx.beginPath();
           ctx.moveTo(-12 * scale, i * 6 * scale);
@@ -117,21 +114,18 @@ function drawPattern(ctx, x, y, pattern, size, color) {
       break;
     
     case 'peaks':
-      // Two rows: 3 on bottom, 2 on top (with more spacing)
-      // Bottom row
       for (let i = 0; i < 3; i++) {
         const px = x - 26 * scale + i * 26 * scale;
-        const py = y + 18 * scale; // Moved down
+        const py = y + 18 * scale;
         ctx.beginPath();
         ctx.moveTo(px - 10 * scale, py + 10 * scale);
         ctx.lineTo(px, py - 10 * scale);
         ctx.lineTo(px + 10 * scale, py + 10 * scale);
         ctx.stroke();
       }
-      // Top row (2 peaks, offset)
       for (let i = 0; i < 2; i++) {
         const px = x - 13 * scale + i * 26 * scale;
-        const py = y - 15 * scale; // Moved up
+        const py = y - 15 * scale;
         ctx.beginPath();
         ctx.moveTo(px - 10 * scale, py + 10 * scale);
         ctx.lineTo(px, py - 10 * scale);
@@ -189,13 +183,12 @@ function drawPattern(ctx, x, y, pattern, size, color) {
       break;
       
     case 'trees':
-      // Spread out more for better tiling - all same size
       const positions = [
         [-25, -10], [-8, -18], [8, -10], [25, -2],
         [-17, 8], [0, 3], [17, 8],
         [-8, 20], [8, 20]
       ];
-      const treeSize = 5; // Consistent size
+      const treeSize = 5;
       positions.forEach(([px, py]) => {
         ctx.beginPath();
         ctx.moveTo(x + px * scale - treeSize * scale, y + py * scale + 8 * scale);
@@ -207,7 +200,6 @@ function drawPattern(ctx, x, y, pattern, size, color) {
       break;
       
     case 'dense-trees':
-      // More spread out and same size as regular forest
       const densePos = [
         [-28, -15], [-14, -20], [0, -24], [14, -20], [28, -15],
         [-21, -5], [-7, -8], [7, -8], [21, -5],
@@ -215,7 +207,7 @@ function drawPattern(ctx, x, y, pattern, size, color) {
         [-21, 15], [-7, 18], [7, 18], [21, 15],
         [-14, 25], [0, 28], [14, 25]
       ];
-      const denseTreeSize = 5; // Same size as regular forest
+      const denseTreeSize = 5;
       densePos.forEach(([px, py]) => {
         ctx.beginPath();
         ctx.moveTo(x + px * scale - denseTreeSize * scale, y + py * scale + 8 * scale);
@@ -227,7 +219,6 @@ function drawPattern(ctx, x, y, pattern, size, color) {
       break;
       
     case 'waves':
-      // Centered water waves (3 lines like shallow/deep water)
       for (let i = 0; i < 3; i++) {
         const py = y - 20 * scale + i * 20 * scale;
         ctx.beginPath();
@@ -256,7 +247,6 @@ function drawPattern(ctx, x, y, pattern, size, color) {
       break;
       
     case 'rough-waves':
-      // Use light blue color for deep water pattern
       ctx.strokeStyle = '#87CEEB';
       for (let i = 0; i < 4; i++) {
         const py = y - 20 * scale + i * 13 * scale;
@@ -307,7 +297,6 @@ function TilePreview({ tile, size }) {
     
     const ctx = canvas.getContext('2d');
     
-    // Create a larger temporary canvas at full size
     const fullSize = HEX_SIZE;
     const tempCanvas = document.createElement('canvas');
     const tempSize = fullSize * 3;
@@ -315,7 +304,6 @@ function TilePreview({ tile, size }) {
     tempCanvas.height = tempSize;
     const tempCtx = tempCanvas.getContext('2d');
     
-    // Draw the tile at full size on temp canvas
     tempCtx.save();
     tempCtx.translate(tempSize / 2, tempSize / 2);
     drawHex(tempCtx, 0, 0, fullSize, tile.color, true, '#555', 2);
@@ -324,12 +312,9 @@ function TilePreview({ tile, size }) {
     }
     tempCtx.restore();
     
-    // Scale down and draw to preview canvas
     canvas.width = size * 2;
     canvas.height = size * 2;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw the scaled-down version
     ctx.drawImage(tempCanvas, 0, 0, tempSize, tempSize, 0, 0, canvas.width, canvas.height);
     
   }, [tile, size]);
@@ -342,12 +327,14 @@ export default function HexMapBuilder() {
   const [mapData, setMapData] = useState(new Map());
   const [dimensions, setDimensions] = useState({ width: 20, height: 20 });
   const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 });
-  const [selectedTool, setSelectedTool] = useState('paint');
+  const [selectedTool, setSelectedTool] = useState('tile');
   const [selectedTile, setSelectedTile] = useState('plains');
-  const [libraryVisible, setLibraryVisible] = useState(true);
+  const [isErasing, setIsErasing] = useState(false);
+  const [libraryColumns, setLibraryColumns] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [hoveredHex, setHoveredHex] = useState(null);
   const [menuOpen, setMenuOpen] = useState(null);
   const [showExpandDialog, setShowExpandDialog] = useState(false);
   const [expandValues, setExpandValues] = useState({ north: 5, south: 5, east: 5, west: 5 });
@@ -408,6 +395,7 @@ export default function HexMapBuilder() {
         const { x, y } = hexToPixel(q, r, HEX_SIZE);
         const key = `${q},${r}`;
         const tile = mapData.get(key);
+        const isHovered = hoveredHex && hoveredHex.q === q && hoveredHex.r === r;
         
         if (tile) {
           const terrain = TERRAIN_TILES.find(t => t.id === tile.type);
@@ -420,11 +408,17 @@ export default function HexMapBuilder() {
         } else {
           drawHex(ctx, x, y, HEX_SIZE, null, showGrid, '#bbb', 0.5);
         }
+        
+        // Draw hover highlight
+        if (isHovered && (selectedTool === 'tile' || selectedTool === 'feature' || selectedTool === 'road' || selectedTool === 'river')) {
+          const highlightColor = isErasing ? '#ef4444' : '#3b82f6';
+          drawHex(ctx, x, y, HEX_SIZE, null, true, highlightColor, 3);
+        }
       }
     }
     
     ctx.restore();
-  }, [mapData, dimensions, viewport, showGrid]);
+  }, [mapData, dimensions, viewport, showGrid, hoveredHex, selectedTool, isErasing]);
 
   const getMousePos = (e) => {
     const canvas = canvasRef.current;
@@ -442,10 +436,10 @@ export default function HexMapBuilder() {
     if (selectedTool === 'hand' || isSpacePressed) {
       setIsDragging(true);
       setDragStart({ x: e.clientX - viewport.x, y: e.clientY - viewport.y });
-    } else if (selectedTool === 'paint') {
+    } else if (selectedTool === 'tile' && !isErasing) {
       const hex = getMousePos(e);
       placeTile(hex.q, hex.r);
-    } else if (selectedTool === 'erase') {
+    } else if (isErasing) {
       const hex = getMousePos(e);
       eraseTile(hex.q, hex.r);
     }
@@ -458,7 +452,18 @@ export default function HexMapBuilder() {
         x: e.clientX - dragStart.x,
         y: e.clientY - dragStart.y
       }));
+    } else {
+      // Update hovered hex for drawing tools
+      if (selectedTool === 'tile' || selectedTool === 'feature' || selectedTool === 'road' || selectedTool === 'river') {
+        const hex = getMousePos(e);
+        setHoveredHex(hex);
+      }
     }
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+    setHoveredHex(null);
   };
 
   const handleMouseUp = () => {
@@ -474,7 +479,6 @@ export default function HexMapBuilder() {
         scale: Math.max(0.3, Math.min(3, prev.scale * delta))
       }));
     } else {
-      // Two-finger trackpad pan (touchpad scrolling)
       setViewport(prev => ({
         ...prev,
         x: prev.x - e.deltaX,
@@ -628,12 +632,8 @@ export default function HexMapBuilder() {
   };
 
   const getCursorStyle = () => {
-    switch(selectedTool) {
-      case 'hand': return 'grab';
-      case 'paint': return 'crosshair';
-      case 'erase': return 'pointer';
-      default: return 'default';
-    }
+    if (selectedTool === 'hand') return 'grab';
+    return 'crosshair';
   };
 
   return (
@@ -681,16 +681,50 @@ export default function HexMapBuilder() {
               <button onClick={() => setShowGrid(!showGrid)} className="w-full px-4 py-2 text-left hover:bg-gray-100 whitespace-nowrap">
                 {showGrid ? '✓' : ' '} Show Grid
               </button>
-              <button onClick={() => setLibraryVisible(!libraryVisible)} className="w-full px-4 py-2 text-left hover:bg-gray-100 whitespace-nowrap">
-                {libraryVisible ? '✓' : ' '} Show Tile Library
-              </button>
             </div>
           )}
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
+        {/* Toolbar */}
         <div className="w-16 bg-white border-r border-gray-300 flex flex-col items-center py-4 gap-2">
+          <button
+            onClick={() => setSelectedTool('tile')}
+            className={`p-3 rounded ${selectedTool === 'tile' ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
+            title="Tile Placement"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2L21 7v10l-9 5-9-5V7l9-5z" />
+            </svg>
+          </button>
+          
+          <button
+            onClick={() => setSelectedTool('feature')}
+            className={`p-3 rounded ${selectedTool === 'feature' ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
+            title="Features"
+          >
+            <Landmark size={24} />
+          </button>
+          
+          <button
+            onClick={() => setSelectedTool('road')}
+            className={`p-3 rounded ${selectedTool === 'road' ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
+            title="Roads"
+          >
+            <Route size={24} />
+          </button>
+          
+          <button
+            onClick={() => setSelectedTool('river')}
+            className={`p-3 rounded ${selectedTool === 'river' ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
+            title="Rivers"
+          >
+            <Waves size={24} />
+          </button>
+          
+          <div className="border-t border-gray-300 w-full my-2"></div>
+          
           <button
             onClick={() => setSelectedTool('hand')}
             className={`p-3 rounded ${selectedTool === 'hand' ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
@@ -698,23 +732,6 @@ export default function HexMapBuilder() {
           >
             <Hand size={24} />
           </button>
-          <button
-            onClick={() => setSelectedTool('paint')}
-            className={`p-3 rounded ${selectedTool === 'paint' ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
-            title="Paint (P)"
-          >
-            <Pencil size={24} />
-          </button>
-          <button
-            onClick={() => setSelectedTool('erase')}
-            className={`p-3 rounded ${selectedTool === 'erase' ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
-            title="Erase (E)"
-          >
-            <Eraser size={24} />
-          </button>
-          
-          <div className="border-t border-gray-300 w-full my-2"></div>
-          
           <button onClick={() => handleZoom(0.1)} className="p-3 hover:bg-gray-100 rounded" title="Zoom In">
             <Plus size={24} />
           </button>
@@ -726,56 +743,199 @@ export default function HexMapBuilder() {
           </button>
         </div>
 
+        {/* Canvas */}
         <div className="flex-1 relative">
           <canvas
             ref={canvasRef}
-            className={`w-full h-full ${selectedTool === 'erase' ? 'eraser-cursor' : ''}`}
-            style={{ cursor: selectedTool === 'erase' ? undefined : getCursorStyle() }}
+            className="w-full h-full"
+            style={{ cursor: getCursorStyle() }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
             onWheel={handleWheel}
           />
         </div>
 
-        {libraryVisible && (
-          <div className="w-64 bg-white border-l border-gray-300 flex flex-col">
-            <div className="p-4 border-b border-gray-300 flex justify-between items-center">
-              <h3 className="font-semibold">Tile Library</h3>
-              <button onClick={() => setLibraryVisible(false)} className="p-1 hover:bg-gray-100 rounded">
+        {/* Tile Library - on right side */}
+        {(selectedTool === 'tile') && (
+          <div className="flex relative">
+            {/* Tab controls - always visible */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full flex flex-col gap-1 z-10">
+              <button 
+                onClick={() => setLibraryColumns(Math.min(3, libraryColumns + 1))}
+                disabled={libraryColumns >= 3}
+                className={`px-2 py-3 bg-white border border-r-0 border-gray-300 rounded-l-lg shadow-lg ${libraryColumns >= 3 ? 'text-gray-300' : 'hover:bg-gray-50'}`}
+                title="Expand Library"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button 
+                onClick={() => setLibraryColumns(Math.max(0, libraryColumns - 1))}
+                disabled={libraryColumns <= 0}
+                className={`px-2 py-3 bg-white border border-r-0 border-gray-300 rounded-l-lg shadow-lg ${libraryColumns <= 0 ? 'text-gray-300' : 'hover:bg-gray-50'}`}
+                title="Collapse Library"
+              >
                 <ChevronRight size={20} />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="grid grid-cols-2 gap-3">
-                {TERRAIN_TILES.map(tile => {
-                  const canvasId = `tile-preview-${tile.id}`;
-                  return (
-                    <button
-                      key={tile.id}
-                      onClick={() => { setSelectedTile(tile.id); setSelectedTool('paint'); }}
-                      className={`flex flex-col items-center p-3 rounded border-2 transition-all ${
-                        selectedTile === tile.id ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      <TilePreview tile={tile} size={60} />
-                      <span className="text-xs mt-2 text-center">{tile.name}</span>
-                    </button>
-                  );
-                })}
+            {/* Library panel */}
+            <div className={`bg-white border-l border-gray-300 flex flex-col transition-all duration-300`} style={{ width: libraryColumns * 128 + 'px' }}>
+              <div className="p-2 border-b border-gray-300 flex justify-end items-center">
+                <button 
+                  onClick={() => setIsErasing(!isErasing)}
+                  className={`p-2 rounded ${isErasing ? 'bg-red-500 text-white' : 'hover:bg-gray-100'}`}
+                  title="Erase Tiles"
+                >
+                  <Eraser size={18} />
+                </button>
               </div>
+              {libraryColumns > 0 && (
+                <div className="flex-1 overflow-y-auto p-2">
+                  <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${libraryColumns}, minmax(0, 1fr))` }}>
+                    {TERRAIN_TILES.map(tile => (
+                      <button
+                        key={tile.id}
+                        onClick={() => { setSelectedTile(tile.id); setIsErasing(false); }}
+                        className={`flex flex-col items-center p-2 rounded border-2 transition-all ${
+                          selectedTile === tile.id && !isErasing ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <TilePreview tile={tile} size={50} />
+                        <span className="text-xs mt-1 text-center leading-tight">{tile.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
-        
-        {!libraryVisible && (
-          <button
-            onClick={() => setLibraryVisible(true)}
-            className="absolute right-0 top-1/2 -translate-y-1/2 bg-white border border-gray-300 rounded-l-lg p-2 shadow-lg hover:bg-gray-50"
-          >
-            <ChevronLeft size={20} />
-          </button>
+
+        {/* Feature Library */}
+        {(selectedTool === 'feature') && (
+          <div className="flex relative">
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full flex flex-col gap-1 z-10">
+              <button 
+                onClick={() => setLibraryColumns(Math.min(3, libraryColumns + 1))}
+                disabled={libraryColumns >= 3}
+                className={`px-2 py-3 bg-white border border-r-0 border-gray-300 rounded-l-lg shadow-lg ${libraryColumns >= 3 ? 'text-gray-300' : 'hover:bg-gray-50'}`}
+                title="Expand Library"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button 
+                onClick={() => setLibraryColumns(Math.max(0, libraryColumns - 1))}
+                disabled={libraryColumns <= 0}
+                className={`px-2 py-3 bg-white border border-r-0 border-gray-300 rounded-l-lg shadow-lg ${libraryColumns <= 0 ? 'text-gray-300' : 'hover:bg-gray-50'}`}
+                title="Collapse Library"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+            <div className={`bg-white border-l border-gray-300 flex flex-col transition-all duration-300`} style={{ width: libraryColumns * 128 + 'px' }}>
+              <div className="p-2 border-b border-gray-300 flex justify-end items-center">
+                <button 
+                  onClick={() => setIsErasing(!isErasing)}
+                  className={`p-2 rounded ${isErasing ? 'bg-red-500 text-white' : 'hover:bg-gray-100'}`}
+                  title="Erase Features"
+                >
+                  <Eraser size={18} />
+                </button>
+              </div>
+              {libraryColumns > 0 && (
+                <div className="flex-1 overflow-y-auto p-2">
+                  <div className="text-xs text-gray-500 text-center p-4">
+                    Feature library coming soon
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Road Library */}
+        {(selectedTool === 'road') && (
+          <div className="flex relative">
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full flex flex-col gap-1 z-10">
+              <button 
+                onClick={() => setLibraryColumns(Math.min(3, libraryColumns + 1))}
+                disabled={libraryColumns >= 3}
+                className={`px-2 py-3 bg-white border border-r-0 border-gray-300 rounded-l-lg shadow-lg ${libraryColumns >= 3 ? 'text-gray-300' : 'hover:bg-gray-50'}`}
+                title="Expand Library"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button 
+                onClick={() => setLibraryColumns(Math.max(0, libraryColumns - 1))}
+                disabled={libraryColumns <= 0}
+                className={`px-2 py-3 bg-white border border-r-0 border-gray-300 rounded-l-lg shadow-lg ${libraryColumns <= 0 ? 'text-gray-300' : 'hover:bg-gray-50'}`}
+                title="Collapse Library"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+            <div className={`bg-white border-l border-gray-300 flex flex-col transition-all duration-300`} style={{ width: libraryColumns * 128 + 'px' }}>
+              <div className="p-2 border-b border-gray-300 flex justify-end items-center">
+                <button 
+                  onClick={() => setIsErasing(!isErasing)}
+                  className={`p-2 rounded ${isErasing ? 'bg-red-500 text-white' : 'hover:bg-gray-100'}`}
+                  title="Erase Roads"
+                >
+                  <Eraser size={18} />
+                </button>
+              </div>
+              {libraryColumns > 0 && (
+                <div className="flex-1 overflow-y-auto p-2">
+                  <div className="text-xs text-gray-500 text-center p-4">
+                    Road library coming soon
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* River Library */}
+        {(selectedTool === 'river') && (
+          <div className="flex relative">
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full flex flex-col gap-1 z-10">
+              <button 
+                onClick={() => setLibraryColumns(Math.min(3, libraryColumns + 1))}
+                disabled={libraryColumns >= 3}
+                className={`px-2 py-3 bg-white border border-r-0 border-gray-300 rounded-l-lg shadow-lg ${libraryColumns >= 3 ? 'text-gray-300' : 'hover:bg-gray-50'}`}
+                title="Expand Library"
+              >
+                <ChevronRight size={20} />
+              </button>
+              <button 
+                onClick={() => setLibraryColumns(Math.max(0, libraryColumns - 1))}
+                disabled={libraryColumns <= 0}
+                className={`px-2 py-3 bg-white border border-r-0 border-gray-300 rounded-l-lg shadow-lg ${libraryColumns <= 0 ? 'text-gray-300' : 'hover:bg-gray-50'}`}
+                title="Collapse Library"
+              >
+                <ChevronLeft size={20} />
+              </button>
+            </div>
+            <div className={`bg-white border-l border-gray-300 flex flex-col transition-all duration-300`} style={{ width: libraryColumns * 128 + 'px' }}>
+              <div className="p-2 border-b border-gray-300 flex justify-end items-center">
+                <button 
+                  onClick={() => setIsErasing(!isErasing)}
+                  className={`p-2 rounded ${isErasing ? 'bg-red-500 text-white' : 'hover:bg-gray-100'}`}
+                  title="Erase Rivers"
+                >
+                  <Eraser size={18} />
+                </button>
+              </div>
+              {libraryColumns > 0 && (
+                <div className="flex-1 overflow-y-auto p-2">
+                  <div className="text-xs text-gray-500 text-center p-4">
+                    River library coming soon
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
 
