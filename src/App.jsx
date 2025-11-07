@@ -6,19 +6,19 @@ const HEX_WIDTH = HEX_SIZE * Math.sqrt(3);
 const HEX_HEIGHT = HEX_SIZE * 2;
 
 const TERRAIN_TILES = [
-  { id: 'plains', name: 'Plains', color: '#9ACD32', pattern: 'solid' },
-  { id: 'farmland', name: 'Farmland', color: '#9ACD32', pattern: 'farmland' },
-  { id: 'forest', name: 'Forest', color: '#228B22', pattern: 'trees' },
-  { id: 'dense-forest', name: 'Dense Forest', color: '#1a5c1a', pattern: 'dense-trees' },
-  { id: 'hills', name: 'Hills', color: '#D2B48C', pattern: 'wavy' },
-  { id: 'mountain-range', name: 'Mountain Range', color: '#8B7355', pattern: 'peaks' },
-  { id: 'large-mountain', name: 'Large Mountain', color: '#6B5344', pattern: 'large-peak' },
-  { id: 'volcano', name: 'Volcano', color: '#8B4513', pattern: 'volcano' },
-  { id: 'water', name: 'Water', color: '#4682B4', pattern: 'waves' },
-  { id: 'shallow-water', name: 'Shallow Water', color: '#87CEEB', pattern: 'shallow-waves' },
-  { id: 'deep-water', name: 'Deep Water', color: '#1e3a5f', pattern: 'rough-waves' },
-  { id: 'desert', name: 'Desert/Beach', color: '#F4E4A6', pattern: 'dots' },
-  { id: 'swamp', name: 'Swamp', color: '#5a6b5a', pattern: 'reeds' }
+  { id: 'plains', name: 'Plains', color: '#B4F157', pattern: 'solid' },
+  { id: 'farmland', name: 'Farmland', color: '#B4F157', pattern: 'farmland' },
+  { id: 'forest', name: 'Forest', color: '#4CAF50', pattern: 'trees' },
+  { id: 'dense-forest', name: 'Dense Forest', color: '#2E7D32', pattern: 'dense-trees' },
+  { id: 'hills', name: 'Hills', color: '#E8D4B8', pattern: 'wavy' },
+  { id: 'mountain-range', name: 'Mountain Range', color: '#B09877', pattern: 'peaks' },
+  { id: 'large-mountain', name: 'Large Mountain', color: '#8B7768', pattern: 'large-peak' },
+  { id: 'volcano', name: 'Volcano', color: '#B36B2E', pattern: 'volcano' },
+  { id: 'water', name: 'Water', color: '#73A9D7', pattern: 'waves' },
+  { id: 'shallow-water', name: 'Shallow Water', color: '#ADE1F9', pattern: 'shallow-waves' },
+  { id: 'deep-water', name: 'Deep Water', color: '#4A6B8C', pattern: 'rough-waves' },
+  { id: 'desert', name: 'Desert/Beach', color: '#F9EDBB', pattern: 'dots' },
+  { id: 'swamp', name: 'Swamp', color: '#7B8F7B', pattern: 'reeds' }
 ];
 
 function hexToPixel(q, r, hexSize) {
@@ -393,25 +393,46 @@ export default function HexMapBuilder() {
         const { x, y } = hexToPixel(q, r, HEX_SIZE);
         const key = `${q},${r}`;
         const tile = mapData.get(key);
-        const isHovered = hoveredHex && hoveredHex.q === q && hoveredHex.r === r;
         
+        // Layer 1: Draw tiles (background)
         if (tile) {
           const terrain = TERRAIN_TILES.find(t => t.id === tile.type);
           if (terrain) {
-            drawHex(ctx, x, y, HEX_SIZE, terrain.color, showGrid, '#555', 1);
+            drawHex(ctx, x, y, HEX_SIZE, terrain.color, false);
             if (terrain.pattern !== 'solid') {
               drawPattern(ctx, x, y, terrain.pattern, HEX_SIZE, '#000');
             }
           }
         } else {
-          drawHex(ctx, x, y, HEX_SIZE, null, showGrid, '#bbb', 0.5);
-        }
-        
-        if (isHovered && (selectedTool === 'tile' || selectedTool === 'feature' || selectedTool === 'road' || selectedTool === 'river')) {
-          const highlightColor = isErasing ? '#ef4444' : '#3b82f6';
-          drawHex(ctx, x, y, HEX_SIZE, null, true, highlightColor, 3);
+          drawHex(ctx, x, y, HEX_SIZE, '#ffffff', false);
         }
       }
+    }
+    
+    // Layer 2: Draw grid lines on top of tiles
+    if (showGrid) {
+      for (let r = minR; r <= maxR; r++) {
+        for (let q = minQ; q <= maxQ; q++) {
+          const { x, y } = hexToPixel(q, r, HEX_SIZE);
+          const key = `${q},${r}`;
+          const tile = mapData.get(key);
+          
+          // Darker grid lines (20% darker)
+          if (tile) {
+            drawHex(ctx, x, y, HEX_SIZE, null, true, '#333', 1);
+          } else {
+            drawHex(ctx, x, y, HEX_SIZE, null, true, '#999', 0.5);
+          }
+        }
+      }
+    }
+    
+    // Layer 3: Draw hover highlight on top of everything
+    if (hoveredHex && (selectedTool === 'tile' || selectedTool === 'feature' || selectedTool === 'road' || selectedTool === 'river')) {
+      const { x, y } = hexToPixel(hoveredHex.q, hoveredHex.r, HEX_SIZE);
+      // Brighter highlight colors
+      const highlightColor = isErasing ? '#ff6b6b' : '#60a5fa';
+      drawHex(ctx, x, y, HEX_SIZE, null, true, highlightColor, 3);
     }
     
     ctx.restore();
