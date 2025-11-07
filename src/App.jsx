@@ -753,6 +753,13 @@ export default function HexMapBuilder() {
           <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: libraryColumns * 128 + 'px' }}>
             <div className="bg-white border-l border-gray-300 h-full flex flex-col">
               <div className="p-2 border-b border-gray-300 flex justify-between items-center">
+                <button 
+                  onClick={() => setIsErasing(!isErasing)}
+                  className={`p-2 rounded ${isErasing ? 'bg-red-500 text-white' : 'hover:bg-gray-100'}`}
+                  title="Erase Tiles"
+                >
+                  <Eraser size={18} />
+                </button>
                 <div className="flex gap-1">
                   <button 
                     onClick={() => setLibraryColumns(Math.min(3, libraryColumns + 1))}
@@ -771,13 +778,6 @@ export default function HexMapBuilder() {
                     <ChevronRight size={18} />
                   </button>
                 </div>
-                <button 
-                  onClick={() => setIsErasing(!isErasing)}
-                  className={`p-2 rounded ${isErasing ? 'bg-red-500 text-white' : 'hover:bg-gray-100'}`}
-                  title="Erase Tiles"
-                >
-                  <Eraser size={18} />
-                </button>
               </div>
               <div className="flex-1 overflow-y-auto p-2">
                 <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${libraryColumns}, minmax(0, 1fr))` }}>
@@ -804,6 +804,13 @@ export default function HexMapBuilder() {
           <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: libraryColumns * 128 + 'px' }}>
             <div className="bg-white border-l border-gray-300 h-full flex flex-col">
               <div className="p-2 border-b border-gray-300 flex justify-between items-center">
+                <button 
+                  onClick={() => setIsErasing(!isErasing)}
+                  className={`p-2 rounded ${isErasing ? 'bg-red-500 text-white' : 'hover:bg-gray-100'}`}
+                  title="Erase Features"
+                >
+                  <Eraser size={18} />
+                </button>
                 <div className="flex gap-1">
                   <button 
                     onClick={() => setLibraryColumns(Math.min(3, libraryColumns + 1))}
@@ -822,13 +829,6 @@ export default function HexMapBuilder() {
                     <ChevronRight size={18} />
                   </button>
                 </div>
-                <button 
-                  onClick={() => setIsErasing(!isErasing)}
-                  className={`p-2 rounded ${isErasing ? 'bg-red-500 text-white' : 'hover:bg-gray-100'}`}
-                  title="Erase Features"
-                >
-                  <Eraser size={18} />
-                </button>
               </div>
               <div className="flex-1 overflow-y-auto p-2">
                 <div className="text-xs text-gray-500 text-center p-4">
@@ -844,6 +844,13 @@ export default function HexMapBuilder() {
           <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: libraryColumns * 128 + 'px' }}>
             <div className="bg-white border-l border-gray-300 h-full flex flex-col">
               <div className="p-2 border-b border-gray-300 flex justify-between items-center">
+                <button 
+                  onClick={() => setIsErasing(!isErasing)}
+                  className={`p-2 rounded ${isErasing ? 'bg-red-500 text-white' : 'hover:bg-gray-100'}`}
+                  title="Erase Roads"
+                >
+                  <Eraser size={18} />
+                </button>
                 <div className="flex gap-1">
                   <button 
                     onClick={() => setLibraryColumns(Math.min(3, libraryColumns + 1))}
@@ -862,13 +869,6 @@ export default function HexMapBuilder() {
                     <ChevronRight size={18} />
                   </button>
                 </div>
-                <button 
-                  onClick={() => setIsErasing(!isErasing)}
-                  className={`p-2 rounded ${isErasing ? 'bg-red-500 text-white' : 'hover:bg-gray-100'}`}
-                  title="Erase Roads"
-                >
-                  <Eraser size={18} />
-                </button>
               </div>
               <div className="flex-1 overflow-y-auto p-2">
                 <div className="text-xs text-gray-500 text-center p-4">
@@ -884,6 +884,13 @@ export default function HexMapBuilder() {
           <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: libraryColumns * 128 + 'px' }}>
             <div className="bg-white border-l border-gray-300 h-full flex flex-col">
               <div className="p-2 border-b border-gray-300 flex justify-between items-center">
+                <button 
+                  onClick={() => setIsErasing(!isErasing)}
+                  className={`p-2 rounded ${isErasing ? 'bg-red-500 text-white' : 'hover:bg-gray-100'}`}
+                  title="Erase Rivers"
+                >
+                  <Eraser size={18} />
+                </button>
                 <div className="flex gap-1">
                   <button 
                     onClick={() => setLibraryColumns(Math.min(3, libraryColumns + 1))}
@@ -902,13 +909,6 @@ export default function HexMapBuilder() {
                     <ChevronRight size={18} />
                   </button>
                 </div>
-                <button 
-                  onClick={() => setIsErasing(!isErasing)}
-                  className={`p-2 rounded ${isErasing ? 'bg-red-500 text-white' : 'hover:bg-gray-100'}`}
-                  title="Erase Rivers"
-                >
-                  <Eraser size={18} />
-                </button>
               </div>
               <div className="flex-1 overflow-y-auto p-2">
                 <div className="text-xs text-gray-500 text-center p-4">
