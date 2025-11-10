@@ -18,7 +18,7 @@ const TERRAIN_TILES = [
   { id: 'shallow-water', name: 'Shallow Water', color: '#ADE1F9', pattern: 'shallow-waves' },
   { id: 'deep-water', name: 'Deep Water', color: '#4A6B8C', pattern: 'rough-waves' },
   { id: 'desert', name: 'Desert/Beach', color: '#F9EDBB', pattern: 'dots' },
-  { id: 'swamp', name: 'Swamp', color: '#7B8F7B', pattern: 'reeds' }
+  { id: 'swamp', name: 'Swamp', color: '#A8B5A0', pattern: 'reeds' }
 ];
 
 function hexToPixel(q, r, hexSize) {
