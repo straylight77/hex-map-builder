@@ -5,6 +5,7 @@ import { useMapData } from './hooks/useMapData.js';
 import { useTools } from './hooks/useTools.js';
 import { pixelToHex } from './utils/hex.js';
 import { HEX_SIZE } from './utils/hex.js';
+import { hitTestPaths, canvasEventToWorld } from './utils/hitTest.js';
 import { Toolbar } from './components/Toolbar.jsx';
 import { TileLibrary } from './components/TileLibrary.jsx';
 import { PathLibrary } from './components/PathLibrary.jsx';
@@ -15,30 +16,64 @@ export default function App() {
   const [showGrid, setShowGrid] = useState(true);
   const [showExpandDialog, setShowExpandDialog] = useState(false);
   const [hoveredHex, setHoveredHex] = useState(null);
-  // Track whether the mouse button is held for paint-drag on tile tool
   const isPaintingRef = useRef(false);
 
   const viewport = useViewport();
   const mapData = useMapData();
   const tools = useTools();
 
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  const isPathTool = tools.selectedTool === 'road' || tools.selectedTool === 'river';
+
+  /** Paths that belong to the currently active path tool. */
+  const activePaths = useCallback(() => {
+    if (tools.selectedTool === 'road') return mapData.mapDoc.roads;
+    if (tools.selectedTool === 'river') return mapData.mapDoc.rivers;
+    return [];
+  }, [tools.selectedTool, mapData.mapDoc.roads, mapData.mapDoc.rivers]);
+
+  /** Style of the currently selected committed path (for select-mode editing). */
+  const selectedPathStyle = useCallback(() => {
+    if (!tools.selectedPathId) return null;
+    const all = [...mapData.mapDoc.roads, ...mapData.mapDoc.rivers];
+    return all.find(p => p.id === tools.selectedPathId)?.style ?? null;
+  }, [tools.selectedPathId, mapData.mapDoc.roads, mapData.mapDoc.rivers]);
+
+  const canvasToWorld = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    return canvasEventToWorld(e, canvas, viewport.viewport);
+  }, [viewport.viewport]);
+
+  const canvasToHex = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const wx = (e.clientX - rect.left - canvas.width / 2 - viewport.viewport.x) / viewport.viewport.scale;
+    const wy = (e.clientY - rect.top  - canvas.height / 2 - viewport.viewport.y) / viewport.viewport.scale;
+    return pixelToHex(wx, wy, HEX_SIZE);
+  }, [viewport.viewport]);
+
   // ── Canvas render ──────────────────────────────────────────────────────────
-  // Runs whenever any piece of rendering state changes.
 
   useEffect(() => {
     renderMap(canvasRef.current, {
-      tiles: mapData.mapDoc.tiles,
-      features: mapData.mapDoc.features,
-      roads: mapData.mapDoc.roads,
-      rivers: mapData.mapDoc.rivers,
-      dimensions: mapData.mapDoc.dimensions,
-      viewport: viewport.viewport,
+      tiles:           mapData.mapDoc.tiles,
+      features:        mapData.mapDoc.features,
+      roads:           mapData.mapDoc.roads,
+      rivers:          mapData.mapDoc.rivers,
+      dimensions:      mapData.mapDoc.dimensions,
+      viewport:        viewport.viewport,
       showGrid,
       hoveredHex,
-      selectedTool: tools.selectedTool,
-      isErasing: tools.isErasing,
-      activePath: tools.activePath,
+      selectedTool:    tools.selectedTool,
+      isErasing:       tools.isErasing,
+      activePath:      tools.activePath,
       activePathStyle: tools.activePathStyle,
+      pathToolMode:    tools.pathToolMode,
+      hoveredPathId:   tools.hoveredPathId,
+      selectedPathId:  tools.selectedPathId,
     });
   }, [
     mapData.mapDoc,
@@ -49,34 +84,10 @@ export default function App() {
     tools.isErasing,
     tools.activePath,
     tools.activePathStyle,
+    tools.pathToolMode,
+    tools.hoveredPathId,
+    tools.selectedPathId,
   ]);
-
-  // ── Canvas resize observer ─────────────────────────────────────────────────
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const observer = new ResizeObserver(() => {
-      // Force a re-render on resize by triggering the renderMap effect
-      // The renderer itself handles the canvas size sync
-      renderMap(canvas, {
-        tiles: mapData.mapDoc.tiles,
-        features: mapData.mapDoc.features,
-        roads: mapData.mapDoc.roads,
-        rivers: mapData.mapDoc.rivers,
-        dimensions: mapData.mapDoc.dimensions,
-        viewport: viewport.viewport,
-        showGrid,
-        hoveredHex,
-        selectedTool: tools.selectedTool,
-        isErasing: tools.isErasing,
-        activePath: tools.activePath,
-        activePathStyle: tools.activePathStyle,
-      });
-    });
-    observer.observe(canvas);
-    return () => observer.disconnect();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────────────
 
@@ -84,68 +95,72 @@ export default function App() {
     const onKeyDown = (e) => {
       if (e.target.tagName === 'INPUT') return;
 
-      if (e.key === 'Enter') {
-        if (tools.isDrawingPath) {
-          const path = tools.commitPath();
-          if (path) {
-            if (tools.selectedTool === 'road') mapData.commitRoad(path, tools.roadStyle);
-            if (tools.selectedTool === 'river') mapData.commitRiver(path, tools.riverStyle);
-          }
+      if (e.key === 'Enter' && tools.isDrawingPath) {
+        const path = tools.commitPath();
+        if (path) {
+          if (tools.selectedTool === 'road')  mapData.commitRoad(path, tools.roadStyle);
+          if (tools.selectedTool === 'river') mapData.commitRiver(path, tools.riverStyle);
         }
       }
 
       if (e.key === 'Escape') {
         tools.cancelPath();
+        tools.clearPathSelection();
       }
 
-      // Tool shortcuts
-      const shortcuts = { h: 'hand', t: 'tile', f: 'feature', r: 'road', w: 'river' };
-      if (shortcuts[e.key.toLowerCase()]) {
-        tools.selectTool(shortcuts[e.key.toLowerCase()]);
+      if ((e.key === 'Delete' || e.key === 'Backspace') && tools.selectedPathId) {
+        handleDeleteSelected();
       }
+
+      const shortcuts = { h: 'hand', t: 'tile', f: 'feature', r: 'road', w: 'river' };
+      if (shortcuts[e.key.toLowerCase()]) tools.selectTool(shortcuts[e.key.toLowerCase()]);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
+  }, [tools, mapData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Delete selected path ───────────────────────────────────────────────────
+
+  const handleDeleteSelected = useCallback(() => {
+    if (!tools.selectedPathId) return;
+    const isRoad = mapData.mapDoc.roads.some(r => r.id === tools.selectedPathId);
+    if (isRoad) mapData.deleteRoad(tools.selectedPathId);
+    else        mapData.deleteRiver(tools.selectedPathId);
+    tools.clearPathSelection();
   }, [tools, mapData]);
 
-  // ── Mouse position → hex ───────────────────────────────────────────────────
-
-  const canvasEventToHex = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    const worldX = (e.clientX - rect.left - canvas.width / 2 - viewport.viewport.x) / viewport.viewport.scale;
-    const worldY = (e.clientY - rect.top - canvas.height / 2 - viewport.viewport.y) / viewport.viewport.scale;
-    return pixelToHex(worldX, worldY, HEX_SIZE);
-  }, [viewport.viewport]);
-
-  // ── Canvas event handlers ──────────────────────────────────────────────────
+  // ── Mouse handlers ─────────────────────────────────────────────────────────
 
   const handleMouseDown = useCallback((e) => {
     if (e.button !== 0) return;
 
-    const isPanMode = tools.selectedTool === 'hand';
-    if (isPanMode) {
+    if (tools.selectedTool === 'hand') {
       viewport.startDrag(e.clientX, e.clientY);
       return;
     }
 
-    const hex = canvasEventToHex(e);
-    if (!hex) return;
-
     if (tools.selectedTool === 'tile') {
+      const hex = canvasToHex(e);
+      if (!hex) return;
       isPaintingRef.current = true;
-      if (tools.isErasing) {
-        mapData.eraseTile(hex.q, hex.r);
+      if (tools.isErasing) mapData.eraseTile(hex.q, hex.r);
+      else                 mapData.placeTile(hex.q, hex.r, tools.selectedTile);
+      return;
+    }
+
+    if (isPathTool) {
+      if (tools.pathToolMode === 'draw') {
+        const hex = canvasToHex(e);
+        if (hex) tools.extendPath(hex.q, hex.r);
       } else {
-        mapData.placeTile(hex.q, hex.r, tools.selectedTile);
+        // Select mode — hit test
+        const world = canvasToWorld(e);
+        if (!world) return;
+        const hitId = hitTestPaths(world, activePaths());
+        tools.selectPath(hitId ?? null);
       }
     }
-
-    if (tools.selectedTool === 'road' || tools.selectedTool === 'river') {
-      tools.extendPath(hex.q, hex.r);
-    }
-  }, [tools, mapData, viewport, canvasEventToHex]);
+  }, [tools, mapData, viewport, isPathTool, canvasToHex, canvasToWorld, activePaths]);
 
   const handleMouseMove = useCallback((e) => {
     if (viewport.isDragging) {
@@ -153,20 +168,26 @@ export default function App() {
       return;
     }
 
-    const hex = canvasEventToHex(e);
+    const hex = canvasToHex(e);
     if (hex) setHoveredHex(hex);
 
-    // Paint-drag for tile tool
+    // Tile paint drag
     if (isPaintingRef.current && tools.selectedTool === 'tile' && hex) {
-      if (tools.isErasing) {
-        mapData.eraseTile(hex.q, hex.r);
-      } else {
-        mapData.placeTile(hex.q, hex.r, tools.selectedTile);
+      if (tools.isErasing) mapData.eraseTile(hex.q, hex.r);
+      else                 mapData.placeTile(hex.q, hex.r, tools.selectedTile);
+    }
+
+    // Path hover (select mode only)
+    if (isPathTool && tools.pathToolMode === 'select') {
+      const world = canvasToWorld(e);
+      if (world) {
+        const hitId = hitTestPaths(world, activePaths());
+        tools.hoverPath(hitId ?? null);
       }
     }
-  }, [viewport, tools, mapData, canvasEventToHex]);
+  }, [viewport, tools, mapData, isPathTool, canvasToHex, canvasToWorld, activePaths]);
 
-  const handleMouseUp = useCallback((e) => {
+  const handleMouseUp = useCallback(() => {
     isPaintingRef.current = false;
     viewport.endDrag();
   }, [viewport]);
@@ -175,22 +196,23 @@ export default function App() {
     isPaintingRef.current = false;
     viewport.endDrag();
     setHoveredHex(null);
-  }, [viewport]);
+    if (isPathTool) tools.hoverPath(null);
+  }, [viewport, isPathTool, tools]);
 
   const handleDoubleClick = useCallback((e) => {
-    if (tools.selectedTool !== 'road' && tools.selectedTool !== 'river') return;
+    if (!isPathTool || tools.pathToolMode !== 'draw') return;
     const path = tools.commitPath();
     if (path) {
-      if (tools.selectedTool === 'road') mapData.commitRoad(path, tools.roadStyle);
+      if (tools.selectedTool === 'road')  mapData.commitRoad(path, tools.roadStyle);
       if (tools.selectedTool === 'river') mapData.commitRiver(path, tools.riverStyle);
     }
-  }, [tools, mapData]);
+  }, [isPathTool, tools, mapData]);
 
   const handleWheel = useCallback((e) => {
     viewport.handleWheel(e);
   }, [viewport]);
 
-  // ── New map guard ──────────────────────────────────────────────────────────
+  // ── New map ────────────────────────────────────────────────────────────────
 
   const handleNewMap = useCallback(() => {
     if (window.confirm('Clear the entire map? This cannot be undone.')) {
@@ -202,31 +224,27 @@ export default function App() {
   // ── Export PNG ─────────────────────────────────────────────────────────────
 
   const handleExportPNG = useCallback(() => {
-    const { tiles, dimensions } = mapData.mapDoc;
-    const { HEX_WIDTH, HEX_HEIGHT } = { HEX_WIDTH: HEX_SIZE * Math.sqrt(3), HEX_HEIGHT: HEX_SIZE * 2 };
+    const { tiles, features, roads, rivers, dimensions } = mapData.mapDoc;
+    const HEX_W = HEX_SIZE * Math.sqrt(3);
+    const HEX_H = HEX_SIZE * 2;
     const padding = 2;
 
     const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = (dimensions.width + padding) * HEX_WIDTH;
-    exportCanvas.height = (dimensions.height + padding) * HEX_HEIGHT * 0.75;
+    exportCanvas.width  = (dimensions.width  + padding) * HEX_W;
+    exportCanvas.height = (dimensions.height + padding) * HEX_H * 0.75;
 
     renderMap(exportCanvas, {
-      tiles,
-      features: mapData.mapDoc.features,
-      roads: mapData.mapDoc.roads,
-      rivers: mapData.mapDoc.rivers,
-      dimensions,
-      viewport: {
-        x: 0,
-        y: 0,
-        scale: 1,
-      },
+      tiles, features, roads, rivers, dimensions,
+      viewport: { x: 0, y: 0, scale: 1 },
       showGrid: true,
       hoveredHex: null,
       selectedTool: 'tile',
       isErasing: false,
       activePath: [],
       activePathStyle: null,
+      pathToolMode: 'draw',
+      hoveredPathId: null,
+      selectedPathId: null,
     });
 
     exportCanvas.toBlob(blob => {
@@ -239,15 +257,23 @@ export default function App() {
     });
   }, [mapData.mapDoc]);
 
-  // ── Cursor style ───────────────────────────────────────────────────────────
+  // ── Update selected committed path style ───────────────────────────────────
+
+  const handleUpdateSelectedStyle = useCallback((updates) => {
+    if (!tools.selectedPathId) return;
+    const isRoad = mapData.mapDoc.roads.some(r => r.id === tools.selectedPathId);
+    if (isRoad) mapData.updateRoad(tools.selectedPathId, updates);
+    else        mapData.updateRiver(tools.selectedPathId, updates);
+  }, [tools.selectedPathId, mapData]);
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   const cursorStyle =
-    tools.selectedTool === 'hand' || viewport.isDragging ? 'grab' : 'crosshair';
+    tools.selectedTool === 'hand' || viewport.isDragging ? 'grab' :
+    isPathTool && tools.pathToolMode === 'select' ? 'pointer' :
+    'crosshair';
 
-  // ── Sidebar ────────────────────────────────────────────────────────────────
-
-  const showTileLibrary = tools.selectedTool === 'tile';
-  const showPathLibrary = tools.selectedTool === 'road' || tools.selectedTool === 'river';
+  const showPathLibrary = isPathTool;
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -270,7 +296,6 @@ export default function App() {
           onResetView={viewport.resetViewport}
         />
 
-        {/* Canvas */}
         <div className="absolute inset-0">
           <canvas
             ref={canvasRef}
@@ -285,8 +310,7 @@ export default function App() {
           />
         </div>
 
-        {/* Right sidebar */}
-        {showTileLibrary && (
+        {tools.selectedTool === 'tile' && (
           <TileLibrary
             selectedTile={tools.selectedTile}
             onSelectTile={tools.selectTile}
@@ -300,24 +324,26 @@ export default function App() {
         {showPathLibrary && (
           <PathLibrary
             toolLabel={tools.selectedTool === 'road' ? 'Road' : 'River'}
+            pathToolMode={tools.pathToolMode}
+            onSetPathMode={tools.setPathMode}
             style={tools.selectedTool === 'road' ? tools.roadStyle : tools.riverStyle}
             onUpdateStyle={
-              tools.selectedTool === 'road'
-                ? tools.updateRoadStyle
-                : tools.updateRiverStyle
+              tools.selectedTool === 'road' ? tools.updateRoadStyle : tools.updateRiverStyle
             }
-            isErasing={tools.isErasing}
-            onToggleErase={tools.toggleErase}
             isDrawingPath={tools.isDrawingPath}
             activePath={tools.activePath}
             onCommit={() => {
               const path = tools.commitPath();
               if (path) {
-                if (tools.selectedTool === 'road') mapData.commitRoad(path, tools.roadStyle);
-                else mapData.commitRiver(path, tools.riverStyle);
+                if (tools.selectedTool === 'road')  mapData.commitRoad(path, tools.roadStyle);
+                else                                mapData.commitRiver(path, tools.riverStyle);
               }
             }}
             onCancel={tools.cancelPath}
+            selectedPathId={tools.selectedPathId}
+            selectedPathStyle={selectedPathStyle()}
+            onUpdateSelectedStyle={handleUpdateSelectedStyle}
+            onDeleteSelected={handleDeleteSelected}
             columns={tools.libraryColumns}
             onSetColumns={tools.setColumns}
           />

@@ -5,9 +5,11 @@ import { DEFAULT_ROAD_STYLE, DEFAULT_RIVER_STYLE } from '../data/mapSchema.js';
  * Manages all tool-selection state and the in-progress path being drawn
  * for the Road and River tools.
  *
- * Roads and rivers share identical interaction logic (click to extend,
- * double-click or Enter to commit, Escape to cancel). They differ only
- * in their default styles.
+ * Path tools have two explicit modes:
+ *   'draw'   — clicking canvas cells extends / commits a new path
+ *   'select' — clicking near a committed path selects it for editing/deletion
+ *
+ * Default mode when switching to road/river: 'draw'.
  */
 export function useTools() {
   const [selectedTool, setSelectedTool] = useState('tile');
@@ -15,18 +17,19 @@ export function useTools() {
   const [isErasing, setIsErasing] = useState(false);
   const [libraryColumns, setLibraryColumns] = useState(1);
 
-  // ── Path drawing (Road / River) ───────────────────────────────────────────
+  // ── Path tool mode ────────────────────────────────────────────────────────
+  const [pathToolMode, setPathToolModeState] = useState('draw'); // 'draw' | 'select'
+  const [selectedPathId, setSelectedPathId] = useState(null);
+  const [hoveredPathId, setHoveredPathId] = useState(null);
 
-  // The hex path being built while the user is clicking cells.
+  // ── In-progress drawing path ──────────────────────────────────────────────
   const [activePath, setActivePath] = useState([]);
   const [isDrawingPath, setIsDrawingPath] = useState(false);
 
-  // Per-session style overrides the user can change in the sidebar.
-  // Stored here so they persist across path commits within one session.
+  // ── Per-session style (persists across commits within a session) ──────────
   const [roadStyle, setRoadStyle] = useState({ ...DEFAULT_ROAD_STYLE });
   const [riverStyle, setRiverStyle] = useState({ ...DEFAULT_RIVER_STYLE });
 
-  // Derive the active style based on which path tool is selected
   const activePathStyle =
     selectedTool === 'road' ? roadStyle :
     selectedTool === 'river' ? riverStyle :
@@ -35,10 +38,12 @@ export function useTools() {
   // ── Tool switching ────────────────────────────────────────────────────────
 
   const selectTool = useCallback((tool) => {
-    // Cancel any in-progress path when switching tools
     setActivePath([]);
     setIsDrawingPath(false);
+    setSelectedPathId(null);
+    setHoveredPathId(null);
     setSelectedTool(tool);
+    setPathToolModeState('draw');
     if (tool !== 'tile') setIsErasing(false);
   }, []);
 
@@ -51,13 +56,35 @@ export function useTools() {
     setIsErasing(prev => !prev);
   }, []);
 
-  // ── Path building ─────────────────────────────────────────────────────────
+  // ── Path tool mode switching ──────────────────────────────────────────────
 
-  /**
-   * Add a hex to the in-progress path.
-   * If the hex is the same as the last point, ignore (prevents duplicates on
-   * slow double-clicks that fire two single-click events).
-   */
+  const setPathMode = useCallback((mode) => {
+    if (mode === 'select') {
+      setActivePath([]);
+      setIsDrawingPath(false);
+      setHoveredPathId(null);
+    }
+    if (mode === 'draw') {
+      setHoveredPathId(null);
+      setSelectedPathId(null);
+    }
+    setPathToolModeState(mode);
+  }, []);
+
+  const selectPath = useCallback((id) => {
+    setSelectedPathId(id);
+  }, []);
+
+  const clearPathSelection = useCallback(() => {
+    setSelectedPathId(null);
+  }, []);
+
+  const hoverPath = useCallback((id) => {
+    setHoveredPathId(id);
+  }, []);
+
+  // ── In-progress path building ─────────────────────────────────────────────
+
   const extendPath = useCallback((q, r) => {
     setActivePath(prev => {
       if (prev.length > 0) {
@@ -69,14 +96,10 @@ export function useTools() {
     });
   }, []);
 
-  /**
-   * Commit the current path and return it (so App can pass it to useMapData).
-   * Resets in-progress state.
-   * Returns null if the path is too short to commit.
-   */
   const commitPath = useCallback(() => {
     if (activePath.length < 2) {
-      cancelPath();
+      setActivePath([]);
+      setIsDrawingPath(false);
       return null;
     }
     const committed = [...activePath];
@@ -85,9 +108,6 @@ export function useTools() {
     return committed;
   }, [activePath]);
 
-  /**
-   * Discard the current in-progress path.
-   */
   const cancelPath = useCallback(() => {
     setActivePath([]);
     setIsDrawingPath(false);
@@ -115,14 +135,11 @@ export function useTools() {
     }));
   }, []);
 
-  // ── Library column width ──────────────────────────────────────────────────
-
   const setColumns = useCallback((n) => {
     setLibraryColumns(Math.max(1, Math.min(3, n)));
   }, []);
 
   return {
-    // Tool selection
     selectedTool,
     selectTool,
     selectedTile,
@@ -131,13 +148,18 @@ export function useTools() {
     toggleErase,
     libraryColumns,
     setColumns,
-    // Path drawing
+    pathToolMode,
+    setPathMode,
+    selectedPathId,
+    selectPath,
+    clearPathSelection,
+    hoveredPathId,
+    hoverPath,
     activePath,
     isDrawingPath,
     extendPath,
     commitPath,
     cancelPath,
-    // Styles
     roadStyle,
     riverStyle,
     activePathStyle,

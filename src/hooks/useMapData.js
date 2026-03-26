@@ -11,28 +11,12 @@ import { hexKey } from '../utils/hex.js';
 const AUTOSAVE_KEY = 'hexmap-autosave';
 const AUTOSAVE_DELAY_MS = 1000;
 
-/**
- * Owns all map document state: tiles, features, roads, rivers, dimensions.
- *
- * Handles:
- *  - Placing and erasing tiles
- *  - Committing completed roads and rivers
- *  - Auto-expanding dimensions when tiles are placed near the boundary
- *  - Autosave to localStorage (debounced)
- *  - Save to / load from JSON file
- *  - Export to PNG (requires a canvas ref from the caller)
- */
-export function useMapData(onViewportLoad) {
+export function useMapData() {
   const [mapDoc, setMapDoc] = useState(() => {
-    // Attempt to restore from autosave on first mount
     try {
       const saved = localStorage.getItem(AUTOSAVE_KEY);
-      if (saved) {
-        return deserialiseMap(JSON.parse(saved));
-      }
-    } catch {
-      // Corrupt autosave — start fresh
-    }
+      if (saved) return deserialiseMap(JSON.parse(saved));
+    } catch {}
     return createEmptyMap();
   });
 
@@ -42,9 +26,7 @@ export function useMapData(onViewportLoad) {
     const timer = setTimeout(() => {
       try {
         localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(serialiseMap(mapDoc)));
-      } catch {
-        // Storage quota exceeded or unavailable — silently ignore
-      }
+      } catch {}
     }, AUTOSAVE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [mapDoc]);
@@ -56,8 +38,6 @@ export function useMapData(onViewportLoad) {
     setMapDoc(prev => {
       const tiles = new Map(prev.tiles);
       tiles.set(key, { type: tileType });
-
-      // Auto-expand if placing near boundary
       const { width, height } = prev.dimensions;
       const halfW = width / 2;
       const halfH = height / 2;
@@ -65,7 +45,6 @@ export function useMapData(onViewportLoad) {
         Math.abs(q) >= halfW - 1 || Math.abs(r) >= halfH - 1
           ? { width: width + 5, height: height + 5 }
           : prev.dimensions;
-
       return { ...prev, tiles, dimensions };
     });
   }, []);
@@ -79,7 +58,7 @@ export function useMapData(onViewportLoad) {
     });
   }, []);
 
-  // ── Road / river operations ───────────────────────────────────────────────
+  // ── Road / river commit ───────────────────────────────────────────────────
 
   const commitRoad = useCallback((hexPath, styleOverrides = {}) => {
     if (!hexPath || hexPath.length < 2) return;
@@ -93,12 +72,52 @@ export function useMapData(onViewportLoad) {
     setMapDoc(prev => ({ ...prev, rivers: [...prev.rivers, river] }));
   }, []);
 
+  // ── Road / river delete ───────────────────────────────────────────────────
+
   const deleteRoad = useCallback((id) => {
     setMapDoc(prev => ({ ...prev, roads: prev.roads.filter(r => r.id !== id) }));
   }, []);
 
   const deleteRiver = useCallback((id) => {
     setMapDoc(prev => ({ ...prev, rivers: prev.rivers.filter(r => r.id !== id) }));
+  }, []);
+
+  // ── Road / river update (for in-place style editing) ─────────────────────
+
+  const updateRoad = useCallback((id, changes) => {
+    setMapDoc(prev => ({
+      ...prev,
+      roads: prev.roads.map(r =>
+        r.id !== id ? r : {
+          ...r,
+          style: {
+            ...r.style,
+            ...changes,
+            spline: changes.spline
+              ? { ...r.style.spline, ...changes.spline }
+              : r.style.spline,
+          },
+        }
+      ),
+    }));
+  }, []);
+
+  const updateRiver = useCallback((id, changes) => {
+    setMapDoc(prev => ({
+      ...prev,
+      rivers: prev.rivers.map(r =>
+        r.id !== id ? r : {
+          ...r,
+          style: {
+            ...r.style,
+            ...changes,
+            spline: changes.spline
+              ? { ...r.style.spline, ...changes.spline }
+              : r.style.spline,
+          },
+        }
+      ),
+    }));
   }, []);
 
   // ── Map-level operations ──────────────────────────────────────────────────
@@ -121,9 +140,7 @@ export function useMapData(onViewportLoad) {
 
   const saveToFile = useCallback(() => {
     const data = serialiseMap(mapDoc);
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: 'application/json',
-    });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -140,12 +157,9 @@ export function useMapData(onViewportLoad) {
         const raw = JSON.parse(e.target.result);
         const doc = deserialiseMap(raw);
         setMapDoc(doc);
-        // If the save included viewport data, restore it
-        if (raw.viewport && onViewportRestore) {
-          onViewportRestore(raw.viewport);
-        }
+        if (raw.viewport && onViewportRestore) onViewportRestore(raw.viewport);
       } catch {
-        alert('Failed to load map file — the file may be corrupt or in an unrecognised format.');
+        alert('Failed to load map file.');
       }
     };
     reader.readAsText(file);
@@ -153,15 +167,14 @@ export function useMapData(onViewportLoad) {
 
   return {
     mapDoc,
-    // Tile ops
     placeTile,
     eraseTile,
-    // Road/river ops
     commitRoad,
     commitRiver,
     deleteRoad,
     deleteRiver,
-    // Map ops
+    updateRoad,
+    updateRiver,
     clearMap,
     expandMap,
     saveToFile,
