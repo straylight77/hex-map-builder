@@ -1,28 +1,25 @@
 // ---------------------------------------------------------------------------
 // Map data schema
 // ---------------------------------------------------------------------------
-// This module owns the shape of the map document. All state that gets saved
-// to disk or localStorage lives here. Rendering and UI code should import
-// these factories rather than constructing objects inline.
 
-/**
- * Default spline settings applied to new roads and rivers.
- * Users can override these per-path.
- *
- * tension: 0 = straight polyline segments, 1 = highly curved.
- *   Catmull-Rom uses this as the alpha parameter.
- * enabled: when false the path renders as a plain polyline regardless of tension.
- */
 export const DEFAULT_SPLINE = {
   enabled: true,
   tension: 0.5,
 };
 
+export const DEFAULT_MEANDER = {
+  enabled: true,
+  amplitude: 0.25,   // deviation as fraction of segment length
+  depth: 2,          // fractal recursion levels (1-4)
+  points: 3,         // extra points injected per waypoint segment before displacement
+};
+
 export const DEFAULT_ROAD_STYLE = {
   width: 4,
   color: '#8B7355',
-  dash: [],          // [] = solid, [8,4] = dashed, etc.
+  dash: [],
   spline: { ...DEFAULT_SPLINE },
+  // Roads do not meander
 };
 
 export const DEFAULT_RIVER_STYLE = {
@@ -30,30 +27,23 @@ export const DEFAULT_RIVER_STYLE = {
   color: '#5B9BD5',
   dash: [],
   spline: { ...DEFAULT_SPLINE, tension: 0.6 },
+  meander: { ...DEFAULT_MEANDER },
 };
 
 /**
  * Create a fresh, empty map document.
- * @param {{ width?: number, height?: number }} [opts]
- * @returns {MapDocument}
  */
 export function createEmptyMap({ width = 20, height = 20 } = {}) {
   return {
     version: '2.0',
     dimensions: { width, height },
-    tiles: new Map(),       // Map<"q,r", { type: string }>
-    features: new Map(),    // Map<"q,r", { type: string, rotation?: number }>
-    roads: [],              // PathObject[]
-    rivers: [],             // PathObject[]
+    tiles: new Map(),
+    features: new Map(),
+    roads: [],
+    rivers: [],
   };
 }
 
-/**
- * Create a new road path object.
- * @param {Array<{q:number, r:number}>} hexPath
- * @param {Partial<typeof DEFAULT_ROAD_STYLE>} [styleOverrides]
- * @returns {PathObject}
- */
 export function createRoad(hexPath, styleOverrides = {}) {
   return {
     id: crypto.randomUUID(),
@@ -62,30 +52,22 @@ export function createRoad(hexPath, styleOverrides = {}) {
   };
 }
 
-/**
- * Create a new river path object.
- * @param {Array<{q:number, r:number}>} hexPath
- * @param {Partial<typeof DEFAULT_RIVER_STYLE>} [styleOverrides]
- * @returns {PathObject}
- */
 export function createRiver(hexPath, styleOverrides = {}) {
   return {
     id: crypto.randomUUID(),
     path: hexPath,
-    style: { ...DEFAULT_RIVER_STYLE, ...styleOverrides },
+    style: {
+      ...DEFAULT_RIVER_STYLE,
+      ...styleOverrides,
+      meander: { ...DEFAULT_MEANDER, ...(styleOverrides.meander ?? {}) },
+    },
   };
 }
 
 // ---------------------------------------------------------------------------
 // Serialisation helpers
 // ---------------------------------------------------------------------------
-// Maps are not JSON-serialisable by default, so we convert to/from plain arrays.
 
-/**
- * Serialise a MapDocument to a plain JSON-compatible object.
- * @param {MapDocument} doc
- * @returns {object}
- */
 export function serialiseMap(doc) {
   return {
     version: doc.version,
@@ -94,20 +76,11 @@ export function serialiseMap(doc) {
     features: Array.from(doc.features.entries()),
     roads: doc.roads,
     rivers: doc.rivers,
-    metadata: {
-      modified: Date.now(),
-    },
+    metadata: { modified: Date.now() },
   };
 }
 
-/**
- * Deserialise a plain object (from JSON.parse) into a MapDocument.
- * Handles both the old v1 format (tiles only) and the new v2 format.
- * @param {object} raw
- * @returns {MapDocument}
- */
 export function deserialiseMap(raw) {
-  // v1 compat: old saves stored tiles as a plain object, not an array of entries
   let tilesEntries;
   if (Array.isArray(raw.tiles)) {
     tilesEntries = raw.tiles;
@@ -117,12 +90,22 @@ export function deserialiseMap(raw) {
     tilesEntries = [];
   }
 
+  // Migrate rivers that lack a meander field (saved before this feature)
+  const rivers = (raw.rivers ?? []).map(r => ({
+    ...r,
+    style: {
+      ...DEFAULT_RIVER_STYLE,
+      ...r.style,
+      meander: { ...DEFAULT_MEANDER, ...(r.style?.meander ?? {}) },
+    },
+  }));
+
   return {
     version: '2.0',
     dimensions: raw.dimensions ?? { width: 20, height: 20 },
     tiles: new Map(tilesEntries),
     features: new Map(Array.isArray(raw.features) ? raw.features : []),
     roads: raw.roads ?? [],
-    rivers: raw.rivers ?? [],
+    rivers,
   };
 }

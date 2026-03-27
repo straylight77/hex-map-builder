@@ -132,6 +132,9 @@ export function useTools() {
       spline: updates.spline
         ? { ...prev.spline, ...updates.spline }
         : prev.spline,
+      meander: updates.meander
+        ? { ...prev.meander, ...updates.meander }
+        : prev.meander,
     }));
   }, []);
 

@@ -1,6 +1,5 @@
 import { ChevronLeft, ChevronRight, Pencil, MousePointer2, Trash2 } from 'lucide-react';
 
-// Dash options with more generous spacing
 const DASH_OPTIONS = [
   { label: 'Solid',  dash: []        },
   { label: 'Dashed', dash: [16, 10]  },
@@ -10,35 +9,31 @@ const DASH_OPTIONS = [
 /**
  * Right-hand panel for the Road and River tools.
  *
- * Shows Draw / Select mode toggle at the top.
- *
- * Draw mode:   style controls + in-progress path status
- * Select mode: either "click a path" prompt, or the selected path's
- *              editable style + Delete button
+ * Shows Draw / Select mode toggle at the top, then style controls.
+ * Meander controls are shown only when isRiver is true.
  *
  * @param {{
  *   toolLabel: string,
+ *   isRiver: boolean,
  *   pathToolMode: 'draw'|'select',
  *   onSetPathMode: (mode: string) => void,
- *   // Draw mode
  *   style: object,
  *   onUpdateStyle: (updates: object) => void,
  *   isDrawingPath: boolean,
  *   activePath: Array,
  *   onCommit: () => void,
  *   onCancel: () => void,
- *   // Select mode
  *   selectedPathId: string|null,
- *   selectedPathStyle: object|null,   style of the currently selected committed path
+ *   selectedPathStyle: object|null,
  *   onUpdateSelectedStyle: (updates: object) => void,
  *   onDeleteSelected: () => void,
- *   // Shared
  *   columns: number,
  *   onSetColumns: (n: number) => void,
  * }} props
  */
 export function PathLibrary({
   toolLabel,
+  isRiver,
   pathToolMode,
   onSetPathMode,
   style,
@@ -58,15 +53,17 @@ export function PathLibrary({
   const canCommit = activePath?.length >= 2;
   const hasSelection = !!selectedPathId;
 
-  // Which style object and updater to use for the style controls
   const editStyle = pathToolMode === 'select' && hasSelection ? selectedPathStyle : style;
   const editUpdater = pathToolMode === 'select' && hasSelection ? onUpdateSelectedStyle : onUpdateStyle;
+
+  const meander = editStyle?.meander;
+  const showMeanderControls = isRiver && (pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection));
 
   return (
     <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: panelWidth }}>
       <div className="bg-white border-l border-gray-300 h-full flex flex-col">
 
-        {/* ── Header: tool label + column controls ── */}
+        {/* ── Header ── */}
         <div className="px-3 py-2 border-b border-gray-300 flex justify-between items-center">
           <span className="text-sm font-semibold text-gray-700">{toolLabel}</span>
           <div className="flex gap-1">
@@ -87,7 +84,7 @@ export function PathLibrary({
           </div>
         </div>
 
-        {/* ── Mode toggle: Draw / Select ── */}
+        {/* ── Mode toggle ── */}
         <div className="px-3 py-2 border-b border-gray-300 flex gap-2">
           <button
             onClick={() => onSetPathMode('draw')}
@@ -97,8 +94,7 @@ export function PathLibrary({
                 : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
             }`}
           >
-            <Pencil size={13} />
-            Draw
+            <Pencil size={13} /> Draw
           </button>
           <button
             onClick={() => onSetPathMode('select')}
@@ -108,31 +104,27 @@ export function PathLibrary({
                 : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
             }`}
           >
-            <MousePointer2 size={13} />
-            Select
+            <MousePointer2 size={13} /> Select
           </button>
         </div>
 
-        {/* ── Scrollable body ── */}
+        {/* ── Body ── */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
 
-          {/* Select mode — no selection yet */}
           {pathToolMode === 'select' && !hasSelection && (
             <p className="text-xs text-gray-500 text-center pt-2">
               Hover over a path and click to select it.
             </p>
           )}
 
-          {/* Select mode — path selected: show its label */}
           {pathToolMode === 'select' && hasSelection && (
             <p className="text-xs text-blue-600 font-medium">
               {toolLabel} selected — edit below
             </p>
           )}
 
-          {/* Style controls — shown in draw mode always,
-              and in select mode only when a path is selected */}
-          {(pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection)) && editStyle && (
+          {/* Style controls — draw mode always, select mode when something selected */}
+          {editStyle && (pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection)) && (
             <>
               {/* Color */}
               <div>
@@ -158,7 +150,7 @@ export function PathLibrary({
                 />
               </div>
 
-              {/* Dash pattern */}
+              {/* Dash */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Line style</label>
                 <div className="flex flex-col gap-1">
@@ -181,11 +173,9 @@ export function PathLibrary({
                 </div>
               </div>
 
-              {/* Spline toggle */}
+              {/* Spline */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Path smoothing
-                </label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Path smoothing</label>
                 <button
                   onClick={() => editUpdater({ spline: { enabled: !editStyle.spline?.enabled } })}
                   className={`w-full text-xs px-2 py-1 rounded border ${
@@ -198,7 +188,6 @@ export function PathLibrary({
                 </button>
               </div>
 
-              {/* Tension — only when spline enabled */}
               {editStyle.spline?.enabled && (
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -207,15 +196,86 @@ export function PathLibrary({
                   <input
                     type="range" min="0" max="1" step="0.05"
                     value={editStyle.spline.tension ?? 0.5}
-                    onChange={e =>
-                      editUpdater({ spline: { tension: parseFloat(e.target.value) } })
-                    }
+                    onChange={e => editUpdater({ spline: { tension: parseFloat(e.target.value) } })}
                     className="w-full"
                   />
                   <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                    <span>Gentle</span>
-                    <span>Sharp</span>
+                    <span>Gentle</span><span>Sharp</span>
                   </div>
+                </div>
+              )}
+
+              {/* ── Meander (river only) ── */}
+              {showMeanderControls && (
+                <div className="border-t border-gray-200 pt-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-gray-600">Meander</label>
+                    <button
+                      onClick={() => editUpdater({ meander: { enabled: !meander?.enabled } })}
+                      className={`text-xs px-2 py-1 rounded border ${
+                        meander?.enabled
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-300 text-gray-500 hover:border-gray-400'
+                      }`}
+                    >
+                      {meander?.enabled ? '✓ On' : 'Off'}
+                    </button>
+                  </div>
+
+                  {meander?.enabled && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Amplitude: {(meander.amplitude ?? 0.25).toFixed(2)}
+                        </label>
+                        <input
+                          type="range" min="0" max="1" step="0.05"
+                          value={meander.amplitude ?? 0.25}
+                          onChange={e =>
+                            editUpdater({ meander: { amplitude: parseFloat(e.target.value) } })
+                          }
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                          <span>Subtle</span><span>Wild</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Detail levels: {meander.depth ?? 2}
+                        </label>
+                        <input
+                          type="range" min="1" max="4" step="1"
+                          value={meander.depth ?? 2}
+                          onChange={e =>
+                            editUpdater({ meander: { depth: parseInt(e.target.value) } })
+                          }
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                          <span>Simple</span><span>Complex</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Extra points: {meander.points ?? 3}
+                        </label>
+                        <input
+                          type="range" min="0" max="8" step="1"
+                          value={meander.points ?? 3}
+                          onChange={e =>
+                            editUpdater({ meander: { points: parseInt(e.target.value) } })
+                          }
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                          <span>Sparse</span><span>Dense</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </>
@@ -253,7 +313,7 @@ export function PathLibrary({
             </div>
           )}
 
-          {/* ── Select mode: delete button ── */}
+          {/* ── Select mode: delete ── */}
           {pathToolMode === 'select' && (
             <div className="border-t border-gray-200 pt-3">
               <button

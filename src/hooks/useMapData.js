@@ -114,6 +114,9 @@ export function useMapData() {
             spline: changes.spline
               ? { ...r.style.spline, ...changes.spline }
               : r.style.spline,
+            meander: changes.meander
+              ? { ...r.style.meander, ...changes.meander }
+              : r.style.meander,
           },
         }
       ),

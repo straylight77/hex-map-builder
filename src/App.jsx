@@ -319,6 +319,7 @@ export default function App() {
         {isPathTool && (
           <PathLibrary
             toolLabel={tools.selectedTool === 'road' ? 'Road' : 'River'}
+            isRiver={tools.selectedTool === 'river'}
             pathToolMode={tools.pathToolMode}
             onSetPathMode={tools.setPathMode}
             style={tools.selectedTool === 'road' ? tools.roadStyle : tools.riverStyle}
