@@ -307,3 +307,18 @@ export const TERRAIN_TILES = [
 export const TERRAIN_MAP = Object.fromEntries(
   TERRAIN_TILES.map(t => [t.id, t])
 );
+
+// ---------------------------------------------------------------------------
+// Water tile classification
+// ---------------------------------------------------------------------------
+
+/**
+ * Tile IDs that represent water. These tiles are redrawn on top of rivers
+ * in the renderer so that rivers appear to flow into water bodies naturally
+ * rather than overdrawing the water tile patterns.
+ */
+export const WATER_TILE_IDS = new Set([
+  'shallow-water',
+  'water',
+  'deep-water',
+]);

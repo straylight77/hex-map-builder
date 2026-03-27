@@ -3,8 +3,7 @@ import { renderMap } from './rendering/renderer.js';
 import { useViewport } from './hooks/useViewport.js';
 import { useMapData } from './hooks/useMapData.js';
 import { useTools } from './hooks/useTools.js';
-import { pixelToHex } from './utils/hex.js';
-import { HEX_SIZE } from './utils/hex.js';
+import { pixelToHex, hexToPixel, HEX_SIZE } from './utils/hex.js';
 import { hitTestPaths, canvasEventToWorld } from './utils/hitTest.js';
 import { Toolbar } from './components/Toolbar.jsx';
 import { TileLibrary } from './components/TileLibrary.jsx';
@@ -22,18 +21,18 @@ export default function App() {
   const mapData = useMapData();
   const tools = useTools();
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Derived flags ─────────────────────────────────────────────────────────
 
   const isPathTool = tools.selectedTool === 'road' || tools.selectedTool === 'river';
 
-  /** Paths that belong to the currently active path tool. */
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
   const activePaths = useCallback(() => {
-    if (tools.selectedTool === 'road') return mapData.mapDoc.roads;
+    if (tools.selectedTool === 'road')  return mapData.mapDoc.roads;
     if (tools.selectedTool === 'river') return mapData.mapDoc.rivers;
     return [];
   }, [tools.selectedTool, mapData.mapDoc.roads, mapData.mapDoc.rivers]);
 
-  /** Style of the currently selected committed path (for select-mode editing). */
   const selectedPathStyle = useCallback(() => {
     if (!tools.selectedPathId) return null;
     const all = [...mapData.mapDoc.roads, ...mapData.mapDoc.rivers];
@@ -47,13 +46,10 @@ export default function App() {
   }, [viewport.viewport]);
 
   const canvasToHex = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    const wx = (e.clientX - rect.left - canvas.width / 2 - viewport.viewport.x) / viewport.viewport.scale;
-    const wy = (e.clientY - rect.top  - canvas.height / 2 - viewport.viewport.y) / viewport.viewport.scale;
-    return pixelToHex(wx, wy, HEX_SIZE);
-  }, [viewport.viewport]);
+    const world = canvasToWorld(e);
+    if (!world) return null;
+    return pixelToHex(world.x, world.y, HEX_SIZE);
+  }, [canvasToWorld]);
 
   // ── Canvas render ──────────────────────────────────────────────────────────
 
@@ -89,19 +85,33 @@ export default function App() {
     tools.selectedPathId,
   ]);
 
+  // ── Path commit ────────────────────────────────────────────────────────────
+
+  const handleCommitPath = useCallback(() => {
+    if (!tools.isDrawingPath) return;
+    const path = tools.commitPath();
+    if (!path) return;
+    if (tools.selectedTool === 'road')  mapData.commitRoad(path, tools.roadStyle);
+    if (tools.selectedTool === 'river') mapData.commitRiver(path, tools.riverStyle);
+  }, [tools, mapData]);
+
+  // ── Delete selected path ───────────────────────────────────────────────────
+
+  const handleDeleteSelected = useCallback(() => {
+    if (!tools.selectedPathId) return;
+    const isRoad = mapData.mapDoc.roads.some(r => r.id === tools.selectedPathId);
+    if (isRoad) mapData.deleteRoad(tools.selectedPathId);
+    else        mapData.deleteRiver(tools.selectedPathId);
+    tools.clearPathSelection();
+  }, [tools, mapData]);
+
   // ── Keyboard shortcuts ─────────────────────────────────────────────────────
 
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.target.tagName === 'INPUT') return;
 
-      if (e.key === 'Enter' && tools.isDrawingPath) {
-        const path = tools.commitPath();
-        if (path) {
-          if (tools.selectedTool === 'road')  mapData.commitRoad(path, tools.roadStyle);
-          if (tools.selectedTool === 'river') mapData.commitRiver(path, tools.riverStyle);
-        }
-      }
+      if (e.key === 'Enter' && tools.isDrawingPath) handleCommitPath();
 
       if (e.key === 'Escape') {
         tools.cancelPath();
@@ -117,17 +127,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [tools, mapData]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Delete selected path ───────────────────────────────────────────────────
-
-  const handleDeleteSelected = useCallback(() => {
-    if (!tools.selectedPathId) return;
-    const isRoad = mapData.mapDoc.roads.some(r => r.id === tools.selectedPathId);
-    if (isRoad) mapData.deleteRoad(tools.selectedPathId);
-    else        mapData.deleteRiver(tools.selectedPathId);
-    tools.clearPathSelection();
-  }, [tools, mapData]);
+  }, [tools, mapData, handleCommitPath, handleDeleteSelected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Mouse handlers ─────────────────────────────────────────────────────────
 
@@ -153,7 +153,6 @@ export default function App() {
         const hex = canvasToHex(e);
         if (hex) tools.extendPath(hex.q, hex.r);
       } else {
-        // Select mode — hit test
         const world = canvasToWorld(e);
         if (!world) return;
         const hitId = hitTestPaths(world, activePaths());
@@ -177,7 +176,7 @@ export default function App() {
       else                 mapData.placeTile(hex.q, hex.r, tools.selectedTile);
     }
 
-    // Path hover (select mode only)
+    // Path hover (select mode)
     if (isPathTool && tools.pathToolMode === 'select') {
       const world = canvasToWorld(e);
       if (world) {
@@ -199,14 +198,10 @@ export default function App() {
     if (isPathTool) tools.hoverPath(null);
   }, [viewport, isPathTool, tools]);
 
-  const handleDoubleClick = useCallback((e) => {
+  const handleDoubleClick = useCallback(() => {
     if (!isPathTool || tools.pathToolMode !== 'draw') return;
-    const path = tools.commitPath();
-    if (path) {
-      if (tools.selectedTool === 'road')  mapData.commitRoad(path, tools.roadStyle);
-      if (tools.selectedTool === 'river') mapData.commitRiver(path, tools.riverStyle);
-    }
-  }, [isPathTool, tools, mapData]);
+    handleCommitPath();
+  }, [isPathTool, tools, handleCommitPath]);
 
   const handleWheel = useCallback((e) => {
     viewport.handleWheel(e);
@@ -266,14 +261,14 @@ export default function App() {
     else        mapData.updateRiver(tools.selectedPathId, updates);
   }, [tools.selectedPathId, mapData]);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Cursor ─────────────────────────────────────────────────────────────────
 
   const cursorStyle =
     tools.selectedTool === 'hand' || viewport.isDragging ? 'grab' :
-    isPathTool && tools.pathToolMode === 'select' ? 'pointer' :
+    isPathTool && tools.pathToolMode === 'select'        ? 'pointer' :
     'crosshair';
 
-  const showPathLibrary = isPathTool;
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -321,7 +316,7 @@ export default function App() {
           />
         )}
 
-        {showPathLibrary && (
+        {isPathTool && (
           <PathLibrary
             toolLabel={tools.selectedTool === 'road' ? 'Road' : 'River'}
             pathToolMode={tools.pathToolMode}
@@ -332,13 +327,7 @@ export default function App() {
             }
             isDrawingPath={tools.isDrawingPath}
             activePath={tools.activePath}
-            onCommit={() => {
-              const path = tools.commitPath();
-              if (path) {
-                if (tools.selectedTool === 'road')  mapData.commitRoad(path, tools.roadStyle);
-                else                                mapData.commitRiver(path, tools.riverStyle);
-              }
-            }}
+            onCommit={handleCommitPath}
             onCancel={tools.cancelPath}
             selectedPathId={tools.selectedPathId}
             selectedPathStyle={selectedPathStyle()}

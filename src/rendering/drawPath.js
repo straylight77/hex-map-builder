@@ -28,6 +28,12 @@ function buildSplinePath(ctx, points, tension) {
 
 /**
  * Draw a committed road or river path.
+ * Square line caps give a clean, map-like termination at endpoints.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array<{q:number, r:number}>} hexPath
+ * @param {{ width:number, color:string, dash:number[], spline:{enabled:boolean, tension:number} }} style
+ * @param {number} [hexSize]
  */
 export function drawPath(ctx, hexPath, style, hexSize) {
   if (!hexPath || hexPath.length < 2) return;
@@ -36,7 +42,7 @@ export function drawPath(ctx, hexPath, style, hexSize) {
   ctx.save();
   ctx.strokeStyle = style.color;
   ctx.lineWidth = style.width;
-  ctx.lineCap = 'round';
+  ctx.lineCap = 'square';
   ctx.lineJoin = 'round';
   ctx.setLineDash(style.dash ?? []);
 
@@ -54,6 +60,11 @@ export function drawPath(ctx, hexPath, style, hexSize) {
 /**
  * Draw an in-progress (uncommitted) path preview.
  * Semi-transparent dashed overlay with node dots at each waypoint.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array<{q:number, r:number}>} hexPath
+ * @param {{ width:number, color:string, spline:{enabled:boolean, tension:number} }} style
+ * @param {number} [hexSize]
  */
 export function drawPathPreview(ctx, hexPath, style, hexSize) {
   if (!hexPath || hexPath.length < 1) return;
@@ -63,9 +74,8 @@ export function drawPathPreview(ctx, hexPath, style, hexSize) {
   ctx.strokeStyle = style.color;
   ctx.lineWidth = style.width;
   ctx.globalAlpha = 0.55;
-  ctx.lineCap = 'round';
+  ctx.lineCap = 'square';
   ctx.lineJoin = 'round';
-  // Preview always uses a dashed overlay regardless of committed style
   ctx.setLineDash([12, 8]);
 
   ctx.beginPath();

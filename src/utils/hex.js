@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // Hex grid geometry — axial coordinate system (q, r)
-// Flat-top hexagons oriented so rows offset horizontally.
+// Pointy-top hexagons: vertex at top and bottom, flat edges left and right.
 // ---------------------------------------------------------------------------
 
 export const HEX_SIZE = 70;
