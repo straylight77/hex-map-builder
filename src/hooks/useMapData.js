@@ -58,7 +58,50 @@ export function useMapData() {
     });
   }, []);
 
-  // ── Road / river commit ───────────────────────────────────────────────────
+  // ── Feature operations ────────────────────────────────────────────────────
+
+  /**
+   * Place a feature on a hex cell. Overwrites any existing feature.
+   * @param {number} q
+   * @param {number} r
+   * @param {{ id, color, size, rotation }} featureData
+   */
+  const placeFeature = useCallback((q, r, featureData) => {
+    const key = hexKey(q, r);
+    setMapDoc(prev => {
+      const features = new Map(prev.features);
+      features.set(key, { ...featureData });
+      return { ...prev, features };
+    });
+  }, []);
+
+  /**
+   * Remove the feature from a hex cell (if any).
+   */
+  const removeFeature = useCallback((q, r) => {
+    const key = hexKey(q, r);
+    setMapDoc(prev => {
+      const features = new Map(prev.features);
+      features.delete(key);
+      return { ...prev, features };
+    });
+  }, []);
+
+  /**
+   * Update properties of an existing feature without replacing it.
+   */
+  const updateFeature = useCallback((q, r, updates) => {
+    const key = hexKey(q, r);
+    setMapDoc(prev => {
+      const existing = prev.features.get(key);
+      if (!existing) return prev;
+      const features = new Map(prev.features);
+      features.set(key, { ...existing, ...updates });
+      return { ...prev, features };
+    });
+  }, []);
+
+  // ── Road / river operations ───────────────────────────────────────────────
 
   const commitRoad = useCallback((hexPath, styleOverrides = {}) => {
     if (!hexPath || hexPath.length < 2) return;
@@ -72,8 +115,6 @@ export function useMapData() {
     setMapDoc(prev => ({ ...prev, rivers: [...prev.rivers, river] }));
   }, []);
 
-  // ── Road / river delete ───────────────────────────────────────────────────
-
   const deleteRoad = useCallback((id) => {
     setMapDoc(prev => ({ ...prev, roads: prev.roads.filter(r => r.id !== id) }));
   }, []);
@@ -82,8 +123,6 @@ export function useMapData() {
     setMapDoc(prev => ({ ...prev, rivers: prev.rivers.filter(r => r.id !== id) }));
   }, []);
 
-  // ── Road / river update (for in-place style editing) ─────────────────────
-
   const updateRoad = useCallback((id, changes) => {
     setMapDoc(prev => ({
       ...prev,
@@ -91,11 +130,8 @@ export function useMapData() {
         r.id !== id ? r : {
           ...r,
           style: {
-            ...r.style,
-            ...changes,
-            spline: changes.spline
-              ? { ...r.style.spline, ...changes.spline }
-              : r.style.spline,
+            ...r.style, ...changes,
+            spline: changes.spline ? { ...r.style.spline, ...changes.spline } : r.style.spline,
           },
         }
       ),
@@ -109,14 +145,9 @@ export function useMapData() {
         r.id !== id ? r : {
           ...r,
           style: {
-            ...r.style,
-            ...changes,
-            spline: changes.spline
-              ? { ...r.style.spline, ...changes.spline }
-              : r.style.spline,
-            meander: changes.meander
-              ? { ...r.style.meander, ...changes.meander }
-              : r.style.meander,
+            ...r.style, ...changes,
+            spline: changes.spline ? { ...r.style.spline, ...changes.spline } : r.style.spline,
+            meander: changes.meander ? { ...r.style.meander, ...changes.meander } : r.style.meander,
           },
         }
       ),
@@ -125,15 +156,13 @@ export function useMapData() {
 
   // ── Map-level operations ──────────────────────────────────────────────────
 
-  const clearMap = useCallback(() => {
-    setMapDoc(createEmptyMap());
-  }, []);
+  const clearMap = useCallback(() => setMapDoc(createEmptyMap()), []);
 
   const expandMap = useCallback(({ north = 0, south = 0, east = 0, west = 0 }) => {
     setMapDoc(prev => ({
       ...prev,
       dimensions: {
-        width: prev.dimensions.width + east + west,
+        width:  prev.dimensions.width  + east + west,
         height: prev.dimensions.height + north + south,
       },
     }));
@@ -170,17 +199,10 @@ export function useMapData() {
 
   return {
     mapDoc,
-    placeTile,
-    eraseTile,
-    commitRoad,
-    commitRiver,
-    deleteRoad,
-    deleteRiver,
-    updateRoad,
-    updateRiver,
-    clearMap,
-    expandMap,
-    saveToFile,
-    loadFromFile,
+    placeTile, eraseTile,
+    placeFeature, removeFeature, updateFeature,
+    commitRoad, commitRiver, deleteRoad, deleteRiver, updateRoad, updateRiver,
+    clearMap, expandMap,
+    saveToFile, loadFromFile,
   };
 }

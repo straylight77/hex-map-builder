@@ -1,12 +1,8 @@
 import { hexToPixel, hexKey } from '../utils/hex.js';
 import { HEX_SIZE } from '../utils/hex.js';
-import { drawTile, drawGridHex, drawHoverHighlight, drawHex } from './drawPrimitives.js';
+import { drawTile, drawGridHex, drawHoverHighlight, drawHex, drawFeature } from './drawPrimitives.js';
 import { drawPath, drawPathPreview } from './drawPath.js';
 import { WATER_TILE_IDS } from '../data/terrain.js';
-
-// ---------------------------------------------------------------------------
-// Visible hex range
-// ---------------------------------------------------------------------------
 
 function visibleRange(canvasW, canvasH, viewport, buffer = 3) {
   const toWorld = (cx, cy) => ({
@@ -27,21 +23,8 @@ function visibleRange(canvasW, canvasH, viewport, buffer = 3) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Path highlight helper
-// ---------------------------------------------------------------------------
-
-/**
- * Draw a path with a coloured halo to indicate hover or selection.
- * Halo drawn first (wider, semi-transparent), normal path drawn on top.
- */
 function drawPathHighlight(ctx, pathObj, haloColor, haloAlpha = 0.55) {
-  const haloStyle = {
-    ...pathObj.style,
-    color: haloColor,
-    width: pathObj.style.width + 6,
-    dash: [],
-  };
+  const haloStyle = { ...pathObj.style, color: haloColor, width: pathObj.style.width + 6, dash: [] };
   ctx.save();
   ctx.globalAlpha = haloAlpha;
   drawPath(ctx, pathObj.path, haloStyle);
@@ -49,43 +32,18 @@ function drawPathHighlight(ctx, pathObj, haloColor, haloAlpha = 0.55) {
   drawPath(ctx, pathObj.path, pathObj.style);
 }
 
-// ---------------------------------------------------------------------------
-// Main render entry point
-// ---------------------------------------------------------------------------
-
 /**
- * Full canvas redraw.
- *
  * Render order (back to front):
- *   1.  Tile fills + patterns  (all tiles, including water)
+ *   1.  Tile fills + patterns
  *   2.  Committed rivers
- *   3.  Committed roads        (roads above rivers)
- *   4.  Water tiles redrawn    (water appears on top of rivers)
- *   5.  Grid lines             (on top of all terrain and paths)
+ *   3.  Committed roads
+ *   4.  Water tiles redrawn
+ *   5.  Grid lines
  *   6.  In-progress path preview
- *   7.  Features  (stub — ready for implementation)
- *   8.  Hex hover highlight
- *   9.  Path hover highlight   (select mode — red halo)
- *   10. Path selection highlight (select mode — blue halo)
- *
- * @param {HTMLCanvasElement} canvas
- * @param {{
- *   tiles: Map<string,{type:string}>,
- *   features: Map<string,{type:string,rotation?:number}>,
- *   roads: Array<{id:string, path:Array<{q,r}>, style:object}>,
- *   rivers: Array<{id:string, path:Array<{q,r}>, style:object}>,
- *   dimensions: {width:number, height:number},
- *   viewport: {x:number, y:number, scale:number},
- *   showGrid: boolean,
- *   hoveredHex: {q:number,r:number}|null,
- *   selectedTool: string,
- *   isErasing: boolean,
- *   activePath: Array<{q:number,r:number}>,
- *   activePathStyle: object|null,
- *   pathToolMode: 'draw'|'select',
- *   hoveredPathId: string|null,
- *   selectedPathId: string|null,
- * }} state
+ *   7.  Features
+ *   8.  Selected feature hex highlight (blue outline, select mode)
+ *   9.  Hex hover highlight
+ *   10. Path hover / selection highlights
  */
 export function renderMap(canvas, state) {
   if (!canvas) return;
@@ -107,34 +65,29 @@ export function renderMap(canvas, state) {
 
   const { minQ, maxQ, minR, maxR } = visibleRange(W, H, state.viewport);
 
-  // ── 1. All tile fills + patterns ──────────────────────────────────────────
+  // ── 1. Tile fills ─────────────────────────────────────────────────────────
   for (let r = minR; r <= maxR; r++) {
     for (let q = minQ; q <= maxQ; q++) {
       const { x, y } = hexToPixel(q, r);
       const tile = state.tiles.get(hexKey(q, r));
-      if (tile) {
-        drawTile(ctx, x, y, tile.type);
-      } else {
-        drawHex(ctx, x, y, HEX_SIZE, '#ffffff', false);
-      }
+      if (tile) drawTile(ctx, x, y, tile.type);
+      else       drawHex(ctx, x, y, HEX_SIZE, '#ffffff', false);
     }
   }
 
-  // ── 2. Committed rivers ───────────────────────────────────────────────────
+  // ── 2. Rivers ─────────────────────────────────────────────────────────────
   state.rivers?.forEach(river => {
     if (river.id === state.hoveredPathId || river.id === state.selectedPathId) return;
     drawPath(ctx, river.path, river.style);
   });
 
-  // ── 3. Committed roads (above rivers) ────────────────────────────────────
+  // ── 3. Roads ──────────────────────────────────────────────────────────────
   state.roads?.forEach(road => {
     if (road.id === state.hoveredPathId || road.id === state.selectedPathId) return;
     drawPath(ctx, road.path, road.style);
   });
 
-  // ── 4. Water tiles redrawn on top of rivers ──────────────────────────────
-  // This makes rivers appear to flow naturally into water bodies rather than
-  // overdrawing the water tile pattern.
+  // ── 4. Water tiles redrawn ────────────────────────────────────────────────
   for (let r = minR; r <= maxR; r++) {
     for (let q = minQ; q <= maxQ; q++) {
       const tile = state.tiles.get(hexKey(q, r));
@@ -145,7 +98,7 @@ export function renderMap(canvas, state) {
     }
   }
 
-  // ── 5. Grid lines (drawn after all terrain and paths) ────────────────────
+  // ── 5. Grid lines ─────────────────────────────────────────────────────────
   if (state.showGrid) {
     for (let r = minR; r <= maxR; r++) {
       for (let q = minQ; q <= maxQ; q++) {
@@ -155,19 +108,48 @@ export function renderMap(canvas, state) {
     }
   }
 
-  // ── 6. In-progress path preview ───────────────────────────────────────────
+  // ── 6. Path preview ───────────────────────────────────────────────────────
   if (state.activePath?.length > 0 && state.activePathStyle) {
     drawPathPreview(ctx, state.activePath, state.activePathStyle);
   }
 
-  // ── 7. Features (stub) ────────────────────────────────────────────────────
-  // state.features?.forEach(...)
+  // ── 7. Features ───────────────────────────────────────────────────────────
+  for (let r = minR; r <= maxR; r++) {
+    for (let q = minQ; q <= maxQ; q++) {
+      const feature = state.features?.get(hexKey(q, r));
+      if (!feature) continue;
+      const { x, y } = hexToPixel(q, r);
+      drawFeature(ctx, x, y, feature);
+    }
+  }
 
-  // ── 8. Hex hover highlight ────────────────────────────────────────────────
+  // ── 8. Selected feature hex highlight (blue, select mode) ─────────────────
+  if (state.selectedFeatureHex && state.selectedTool === 'feature' && state.featureToolMode === 'select') {
+    const { x, y } = hexToPixel(state.selectedFeatureHex.q, state.selectedFeatureHex.r);
+    // Blue ring — same style as the hover highlight but solid blue to indicate selection
+    ctx.save();
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 180) * (60 * i - 30);
+      const hx = x + HEX_SIZE * Math.cos(angle);
+      const hy = y + HEX_SIZE * Math.sin(angle);
+      if (i === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── 9. Hex hover highlight ────────────────────────────────────────────────
   const isPathTool = state.selectedTool === 'road' || state.selectedTool === 'river';
   const showHexHover =
     state.hoveredHex &&
     (!isPathTool || state.pathToolMode === 'draw') &&
+    // In feature select mode, show hover only over hexes that have features
+    (state.selectedTool !== 'feature' || state.featureToolMode === 'draw' ||
+     state.features?.has(hexKey(state.hoveredHex.q, state.hoveredHex.r))) &&
     ['tile', 'feature', 'road', 'river'].includes(state.selectedTool);
 
   if (showHexHover) {
@@ -175,7 +157,7 @@ export function renderMap(canvas, state) {
     drawHoverHighlight(ctx, x, y, HEX_SIZE, state.isErasing);
   }
 
-  // ── 9. Hovered path highlight (select mode — red) ────────────────────────
+  // ── 10. Path highlights ───────────────────────────────────────────────────
   if (state.pathToolMode === 'select' && state.hoveredPathId &&
       state.hoveredPathId !== state.selectedPathId) {
     const allPaths = [...(state.roads ?? []), ...(state.rivers ?? [])];
@@ -183,7 +165,6 @@ export function renderMap(canvas, state) {
     if (hovered) drawPathHighlight(ctx, hovered, '#ef4444', 0.6);
   }
 
-  // ── 10. Selected path highlight (select mode — blue) ──────────────────────
   if (state.selectedPathId) {
     const allPaths = [...(state.roads ?? []), ...(state.rivers ?? [])];
     const selected = allPaths.find(p => p.id === state.selectedPathId);
