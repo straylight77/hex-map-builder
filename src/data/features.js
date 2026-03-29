@@ -31,6 +31,7 @@ export const FEATURE_CATEGORIES = [
   'Military / Fortifications',
   'Mystical / Ancient',
   'Other',
+  'Geometric',
 ];
 
 // medium=1.0 renders the symbol at natural coordinates designed for a 70px hex.
@@ -51,14 +52,14 @@ export const FEATURE_ICONS = [
   // r=20 comfortably contains the castle square (half-diagonal = 14√2 ≈ 19.8).
 
   // Hamlet: bare solid dot
-  { id: 'waypoint', name: 'Hamlet', category: 'Settlements',
+  { id: 'hamlet', name: 'Hamlet', category: 'Settlements',
     draw(ctx, color) { circle(ctx, 9, color, null); } },
 
   // Village: circle + large dot inside
-  { id: 'hamlet', name: 'Village', category: 'Settlements',
+  { id: 'village', name: 'Village', category: 'Settlements',
     draw(ctx, color) {
       circle(ctx, 20, null, color, 2.5);
-      circle(ctx, 9, color, null);
+      circle(ctx, 7, color, null);
     } },
 
   // Town: circle + filled square inside (was Town)
@@ -84,43 +85,43 @@ export const FEATURE_ICONS = [
   // Homestead: circle + house inside, ~20% smaller house
   { id: 'homestead', name: 'Homestead', category: 'Settlements',
     draw(ctx, color) {
-      circle(ctx, 20, null, color, 2.5);
+      //circle(ctx, 20, null, color, 2.5);
       ctx.fillStyle = color;
       ctx.fillRect(-7, -1, 14, 10);
       poly(ctx, [[-10, -1], [0, -11], [10, -1]], color, null);
     } },
 
-  // Ruined Settlement: three solid dots arranged in a triangle
-  { id: 'ruined-settlement', name: 'Ruined Settlement', category: 'Settlements',
+  // Bridge: two parallel horizontal bars with angled legs at each end.
+  { id: 'bridge', name: 'Bridge', category: 'Settlements',
     draw(ctx, color) {
-      // Triangle of dots: one top-center, two bottom
-      const r = 13; // radius of the arrangement triangle
-      const positions = [
-        [0,           -r],           // top
-        [-r * 0.866,  r * 0.5],      // bottom-left
-        [ r * 0.866,  r * 0.5],      // bottom-right
-      ];
-      positions.forEach(([x, y]) => {
-        ctx.save();
-        ctx.translate(x, y);
-        circle(ctx, 5, color, null);
-        ctx.restore();
-      });
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 3.5;
+      ctx.lineJoin    = 'miter';
+      ctx.lineCap     = 'square';
+      ctx.setLineDash([]);
+
+      const barY1 = -6, barY2 = 6;
+      const barX1 = -11, barX2 = 11;
+      const ld = 9 * 0.707; // 45° leg offset ≈6.4
+
+      ctx.beginPath();
+      ctx.moveTo(barX1 - ld, barY1 - ld);
+      ctx.lineTo(barX1, barY1);
+      ctx.lineTo(barX2, barY1);
+      ctx.lineTo(barX2 + ld, barY1 - ld);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(barX1 - ld, barY2 + ld);
+      ctx.lineTo(barX1, barY2);
+      ctx.lineTo(barX2, barY2);
+      ctx.lineTo(barX2 + ld, barY2 + ld);
+      ctx.stroke();
+
+      ctx.lineCap = 'butt';
     } },
 
   // ── MILITARY / FORTIFICATIONS ────────────────────────────────────────────────
-
-  { id: 'castle', name: 'Square (solid)', category: 'Military / Fortifications',
-    draw(ctx, color) { rect(ctx, -14, -14, 28, 28, color, null); } },
-
-  { id: 'ruined-castle', name: 'Square (outline)', category: 'Military / Fortifications',
-    draw(ctx, color) { rect(ctx, -14, -14, 28, 28, null, color, 2.5); } },
-
-  { id: 'fort', name: 'Fort', category: 'Military / Fortifications',
-    draw(ctx, color) { poly(ctx, [[0,-18],[18,0],[0,18],[-18,0]], color, null); } },
-
-  { id: 'ruined-fort', name: 'Ruined Fort', category: 'Military / Fortifications',
-    draw(ctx, color) { poly(ctx, [[0,-18],[18,0],[0,18],[-18,0]], null, color, 2.5); } },
 
   { id: 'tower', name: 'Tower', category: 'Military / Fortifications',
     draw(ctx, color) {
@@ -379,6 +380,24 @@ export const FEATURE_ICONS = [
 
   // ── MYSTICAL / ANCIENT ───────────────────────────────────────────────────────
 
+  // Ruined Settlement: three solid dots arranged in a triangle
+  { id: 'barrows', name: 'Barrows', category: 'Mystical / Ancient',
+    draw(ctx, color) {
+      // Triangle of dots: one top-center, two bottom
+      const r = 13; // radius of the arrangement triangle
+      const positions = [
+        [0,           -r],           // top
+        [-r * 0.866,  r * 0.5],      // bottom-left
+        [ r * 0.866,  r * 0.5],      // bottom-right
+      ];
+      positions.forEach(([x, y]) => {
+        ctx.save();
+        ctx.translate(x, y);
+        circle(ctx, 6, color, null);
+        ctx.restore();
+      });
+    } },
+
   { id: 'obelisk', name: 'Obelisk', category: 'Mystical / Ancient',
     draw(ctx, color) {
       rect(ctx, -6, -8, 12, 24, color, null);
@@ -395,12 +414,6 @@ export const FEATURE_ICONS = [
         ctx.restore();
       }
     } },
-
-  { id: 'pyramid', name: 'Pyramid', category: 'Mystical / Ancient',
-    draw(ctx, color) { poly(ctx, [[0,-17],[17,12],[-17,12]], color, null); } },
-
-  { id: 'ancient-ruins', name: 'Ancient Ruins', category: 'Mystical / Ancient',
-    draw(ctx, color) { poly(ctx, [[0,-17],[17,12],[-17,12]], null, color, 2.5); } },
 
   // ── OTHER ────────────────────────────────────────────────────────────────────
 
@@ -424,56 +437,6 @@ export const FEATURE_ICONS = [
       ctx.beginPath();
       ctx.arc(0, -2, 11, Math.PI, 0);
       ctx.fill();
-    } },
-
-  { id: 'poi', name: 'Point of Interest', category: 'Other',
-    draw(ctx, color) {
-      const pts = [];
-      for (let i = 0; i < 10; i++) {
-        const angle = (Math.PI / 5) * i - Math.PI / 2;
-        pts.push([Math.cos(angle) * (i%2===0?20:8), Math.sin(angle) * (i%2===0?20:8)]);
-      }
-      poly(ctx, pts, color, null);
-    } },
-
-  { id: 'ruined-poi', name: 'Ruined POI', category: 'Other',
-    draw(ctx, color) {
-      const pts = [];
-      for (let i = 0; i < 10; i++) {
-        const angle = (Math.PI / 5) * i - Math.PI / 2;
-        pts.push([Math.cos(angle) * (i%2===0?20:8), Math.sin(angle) * (i%2===0?20:8)]);
-      }
-      poly(ctx, pts, null, color, 2);
-    } },
-
-  // Bridge: two parallel horizontal bars with angled legs at each end.
-  { id: 'bridge', name: 'Bridge', category: 'Other',
-    draw(ctx, color) {
-      ctx.strokeStyle = color;
-      ctx.lineWidth   = 3.5;
-      ctx.lineJoin    = 'miter';
-      ctx.lineCap     = 'square';
-      ctx.setLineDash([]);
-
-      const barY1 = -6, barY2 = 6;
-      const barX1 = -11, barX2 = 11;
-      const ld = 9 * 0.707; // 45° leg offset ≈6.4
-
-      ctx.beginPath();
-      ctx.moveTo(barX1 - ld, barY1 - ld);
-      ctx.lineTo(barX1, barY1);
-      ctx.lineTo(barX2, barY1);
-      ctx.lineTo(barX2 + ld, barY1 - ld);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(barX1 - ld, barY2 + ld);
-      ctx.lineTo(barX1, barY2);
-      ctx.lineTo(barX2, barY2);
-      ctx.lineTo(barX2 + ld, barY2 + ld);
-      ctx.stroke();
-
-      ctx.lineCap = 'butt';
     } },
 
   // Ford: shallow river crossing — two straight parallel dashed lines.
@@ -570,6 +533,47 @@ export const FEATURE_ICONS = [
 
       ctx.restore(); // end clip
     } },
+
+  // ── GEOMETRIC ────────────────────────────────────────────────────────────────
+
+  { id: 'castle', name: 'Square (solid)', category: 'Geometric',
+    draw(ctx, color) { rect(ctx, -14, -14, 28, 28, color, null); } },
+
+  { id: 'ruined-castle', name: 'Square (outline)', category: 'Geometric',
+    draw(ctx, color) { rect(ctx, -14, -14, 28, 28, null, color, 2.5); } },
+
+  { id: 'fort', name: 'Fort', category: 'Geometric',
+    draw(ctx, color) { poly(ctx, [[0,-18],[18,0],[0,18],[-18,0]], color, null); } },
+
+  { id: 'ruined-fort', name: 'Ruined Fort', category: 'Geometric',
+    draw(ctx, color) { poly(ctx, [[0,-18],[18,0],[0,18],[-18,0]], null, color, 2.5); } },
+
+  { id: 'pyramid', name: 'Pyramid', category: 'Geometric',
+    draw(ctx, color) { poly(ctx, [[0,-17],[17,12],[-17,12]], color, null); } },
+
+  { id: 'ancient-ruins', name: 'Ancient Ruins', category: 'Geometric',
+    draw(ctx, color) { poly(ctx, [[0,-17],[17,12],[-17,12]], null, color, 2.5); } },
+
+  { id: 'poi', name: 'Point of Interest', category: 'Geometric',
+    draw(ctx, color) {
+      const pts = [];
+      for (let i = 0; i < 10; i++) {
+        const angle = (Math.PI / 5) * i - Math.PI / 2;
+        pts.push([Math.cos(angle) * (i%2===0?20:8), Math.sin(angle) * (i%2===0?20:8)]);
+      }
+      poly(ctx, pts, color, null);
+    } },
+
+  { id: 'ruined-poi', name: 'Ruined POI', category: 'Geometric',
+    draw(ctx, color) {
+      const pts = [];
+      for (let i = 0; i < 10; i++) {
+        const angle = (Math.PI / 5) * i - Math.PI / 2;
+        pts.push([Math.cos(angle) * (i%2===0?20:8), Math.sin(angle) * (i%2===0?20:8)]);
+      }
+      poly(ctx, pts, null, color, 2);
+    } },
+
 ];
 
 export const FEATURE_MAP = Object.fromEntries(FEATURE_ICONS.map(f => [f.id, f]));
