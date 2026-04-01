@@ -4,19 +4,6 @@ import { useState } from 'react';
 // MenuBar
 // ---------------------------------------------------------------------------
 
-/**
- * Top menu bar with File and View menus.
- *
- * @param {{
- *   showGrid: boolean,
- *   onToggleGrid: () => void,
- *   onNewMap: () => void,
- *   onSave: () => void,
- *   onLoad: (file: File) => void,
- *   onExportPNG: () => void,
- *   onExpandMap: () => void,
- * }} props
- */
 export function MenuBar({
   showGrid,
   onToggleGrid,
@@ -33,13 +20,11 @@ export function MenuBar({
 
   return (
     <>
-      {/* Backdrop to close menus on outside click */}
       {openMenu && (
         <div className="fixed inset-0 z-40" onClick={close} />
       )}
 
       <div className="bg-white border-b border-gray-300 px-4 py-2 flex gap-4 relative z-50">
-        {/* File menu */}
         <div className="relative">
           <button
             onClick={() => toggle('file')}
@@ -61,7 +46,6 @@ export function MenuBar({
           )}
         </div>
 
-        {/* View menu */}
         <div className="relative">
           <button
             onClick={() => toggle('view')}
@@ -81,8 +65,6 @@ export function MenuBar({
     </>
   );
 }
-
-// Small internal helpers — not exported
 
 function MenuDropdown({ children }) {
   return (
@@ -129,15 +111,6 @@ function MenuFileInput({ onFile, children }) {
 // ExpandDialog
 // ---------------------------------------------------------------------------
 
-/**
- * Modal dialog for expanding the map in each cardinal direction.
- *
- * @param {{
- *   isOpen: boolean,
- *   onClose: () => void,
- *   onApply: (values: {north,south,east,west}) => void,
- * }} props
- */
 export function ExpandDialog({ isOpen, onClose, onApply }) {
   const [values, setValues] = useState({ north: 5, south: 5, east: 5, west: 5 });
 
@@ -192,15 +165,14 @@ export function ExpandDialog({ isOpen, onClose, onApply }) {
 // ---------------------------------------------------------------------------
 
 /**
- * Bottom status strip showing map dimensions and zoom level.
- *
- * @param {{ dimensions: {width,height}, scale: number }} props
+ * Bottom status strip.
+ * `scale` is now the display percentage (e.g. 100 means "normal/home zoom").
  */
 export function StatusBar({ dimensions, scale }) {
   return (
     <div className="bg-white border-t border-gray-300 px-4 py-2 flex items-center gap-6 text-sm text-gray-600">
       <span>Map: {dimensions.width}×{dimensions.height}</span>
-      <span>Zoom: {Math.round(scale * 100)}%</span>
+      <span>Zoom: {scale}%</span>
     </div>
   );
 }

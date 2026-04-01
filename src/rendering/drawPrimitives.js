@@ -23,10 +23,17 @@ export function drawHex(ctx, x, y, size, fillColor, stroke=true, strokeColor='#0
 // Tile
 // ---------------------------------------------------------------------------
 
-export function drawTile(ctx, x, y, terrainId, size = HEX_SIZE) {
+export function drawTile(ctx, x, y, terrainId, size = HEX_SIZE, tileData = null) {
   const terrain = TERRAIN_MAP[terrainId];
   if (!terrain) return;
-  drawHex(ctx, x, y, size, terrain.color, false);
+
+  // For custom tiles, use the per-hex stored color
+  const fillColor = (terrain.isCustom && tileData?.customColor)
+    ? tileData.customColor
+    : terrain.color;
+
+  drawHex(ctx, x, y, size, fillColor, false);
+
   if (terrain.drawPattern) {
     ctx.save();
     ctx.strokeStyle = '#000';
@@ -58,7 +65,7 @@ export function drawHoverHighlight(ctx, x, y, size, erasing) {
 // Tile preview (sidebar)
 // ---------------------------------------------------------------------------
 
-export function renderTilePreview(canvas, terrain, displaySize) {
+export function renderTilePreview(canvas, terrain, displaySize, customColor = null) {
   const fullSize = HEX_SIZE;
   const tempSize = fullSize * 3;
   const temp = document.createElement('canvas');
@@ -66,7 +73,10 @@ export function renderTilePreview(canvas, terrain, displaySize) {
   const tCtx = temp.getContext('2d');
   tCtx.save();
   tCtx.translate(tempSize / 2, tempSize / 2);
-  drawHex(tCtx, 0, 0, fullSize, terrain.color, true, '#555', 2);
+
+  const fillColor = (terrain.isCustom && customColor) ? customColor : terrain.color;
+
+  drawHex(tCtx, 0, 0, fullSize, fillColor, true, '#555', 2);
   if (terrain.drawPattern) {
     tCtx.strokeStyle = '#000'; tCtx.fillStyle = '#000';
     tCtx.lineWidth = 2; tCtx.globalAlpha = 0.4;

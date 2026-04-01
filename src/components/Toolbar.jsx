@@ -1,4 +1,4 @@
-import { Hand, Eraser, Plus, Minus, RotateCcw, Landmark, Route, Waves } from 'lucide-react';
+import { Hand, Plus, Minus, RotateCcw, Landmark, Route, Waves } from 'lucide-react';
 
 const HEX_ICON = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -8,9 +8,9 @@ const HEX_ICON = (
 
 const TOOLS = [
   { id: 'tile',    label: 'Tile Placement', icon: HEX_ICON },
-  { id: 'feature', label: 'Features',       icon: <Landmark size={24} /> },
   { id: 'road',    label: 'Roads',          icon: <Route size={24} /> },
   { id: 'river',   label: 'Rivers',         icon: <Waves size={24} /> },
+  { id: 'feature', label: 'Features',       icon: <Landmark size={24} /> },
 ];
 
 /**

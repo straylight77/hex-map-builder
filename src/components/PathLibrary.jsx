@@ -1,4 +1,6 @@
-import { ChevronLeft, ChevronRight, Pencil, MousePointer2, Trash2 } from 'lucide-react';
+import { Pencil, MousePointer2 } from 'lucide-react';
+
+const PANEL_WIDTH = 268;
 
 const DASH_OPTIONS = [
   { label: 'Solid',  dash: []        },
@@ -8,28 +10,8 @@ const DASH_OPTIONS = [
 
 /**
  * Right-hand panel for the Road and River tools.
- *
- * Shows Draw / Select mode toggle at the top, then style controls.
- * Meander controls are shown only when isRiver is true.
- *
- * @param {{
- *   toolLabel: string,
- *   isRiver: boolean,
- *   pathToolMode: 'draw'|'select',
- *   onSetPathMode: (mode: string) => void,
- *   style: object,
- *   onUpdateStyle: (updates: object) => void,
- *   isDrawingPath: boolean,
- *   activePath: Array,
- *   onCommit: () => void,
- *   onCancel: () => void,
- *   selectedPathId: string|null,
- *   selectedPathStyle: object|null,
- *   onUpdateSelectedStyle: (updates: object) => void,
- *   onDeleteSelected: () => void,
- *   columns: number,
- *   onSetColumns: (n: number) => void,
- * }} props
+ * Fixed width — no expand/collapse controls.
+ * Includes Erase button that removes the hovered/selected path on click.
  */
 export function PathLibrary({
   toolLabel,
@@ -46,46 +28,29 @@ export function PathLibrary({
   selectedPathStyle,
   onUpdateSelectedStyle,
   onDeleteSelected,
-  columns,
-  onSetColumns,
+  isErasing,
+  onToggleErase,
 }) {
-  const panelWidth = Math.max(columns * 128, 220);
   const canCommit = activePath?.length >= 2;
   const hasSelection = !!selectedPathId;
 
-  const editStyle = pathToolMode === 'select' && hasSelection ? selectedPathStyle : style;
+  const editStyle   = pathToolMode === 'select' && hasSelection ? selectedPathStyle : style;
   const editUpdater = pathToolMode === 'select' && hasSelection ? onUpdateSelectedStyle : onUpdateStyle;
 
   const meander = editStyle?.meander;
   const showMeanderControls = isRiver && (pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection));
 
   return (
-    <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: panelWidth }}>
+    <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
       <div className="bg-white border-l border-gray-300 h-full flex flex-col">
 
-        {/* ── Header ── */}
-        <div className="px-3 py-2 border-b border-gray-300 flex justify-between items-center">
-          <span className="text-sm font-semibold text-gray-700">{toolLabel}</span>
-          <div className="flex gap-1">
-            <button
-              onClick={() => onSetColumns(columns + 1)}
-              disabled={columns >= 3}
-              className={`p-1 rounded ${columns >= 3 ? 'text-gray-300' : 'hover:bg-gray-100'}`}
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              onClick={() => onSetColumns(columns - 1)}
-              disabled={columns <= 1}
-              className={`p-1 rounded ${columns <= 1 ? 'text-gray-300' : 'hover:bg-gray-100'}`}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
+        {/* Header */}
+        <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
+          <span className="text-sm font-semibold text-gray-700">{toolLabel}s</span>
         </div>
 
-        {/* ── Mode toggle ── */}
-        <div className="px-3 py-2 border-b border-gray-300 flex gap-2">
+        {/* Draw / Select */}
+        <div className="px-3 py-2 border-b border-gray-200 flex gap-2 flex-shrink-0">
           <button
             onClick={() => onSetPathMode('draw')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium border transition-colors ${
@@ -108,12 +73,26 @@ export function PathLibrary({
           </button>
         </div>
 
-        {/* ── Body ── */}
+        {/* Erase */}
+        <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
+          <button
+            onClick={onToggleErase}
+            className={`w-full py-1.5 rounded text-xs font-medium border-2 transition-colors ${
+              isErasing
+                ? 'bg-red-500 text-white border-red-500'
+                : 'border-red-400 text-red-500 hover:bg-red-50'
+            }`}
+          >
+            Erase {toolLabel}s
+          </button>
+        </div>
+
+        {/* Body */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
 
           {pathToolMode === 'select' && !hasSelection && (
             <p className="text-xs text-gray-500 text-center pt-2">
-              Hover over a path and click to select it.
+              Hover over a {toolLabel.toLowerCase()} and click to select it.
             </p>
           )}
 
@@ -123,7 +102,7 @@ export function PathLibrary({
             </p>
           )}
 
-          {/* Style controls — draw mode always, select mode when something selected */}
+          {/* Style controls */}
           {editStyle && (pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection)) && (
             <>
               {/* Color */}
@@ -205,7 +184,7 @@ export function PathLibrary({
                 </div>
               )}
 
-              {/* ── Meander (river only) ── */}
+              {/* Meander (river only) */}
               {showMeanderControls && (
                 <div className="border-t border-gray-200 pt-3 space-y-3">
                   <div className="flex items-center justify-between">
@@ -231,9 +210,7 @@ export function PathLibrary({
                         <input
                           type="range" min="0" max="1" step="0.05"
                           value={meander.amplitude ?? 0.25}
-                          onChange={e =>
-                            editUpdater({ meander: { amplitude: parseFloat(e.target.value) } })
-                          }
+                          onChange={e => editUpdater({ meander: { amplitude: parseFloat(e.target.value) } })}
                           className="w-full"
                         />
                         <div className="flex justify-between text-xs text-gray-400 mt-0.5">
@@ -248,9 +225,7 @@ export function PathLibrary({
                         <input
                           type="range" min="1" max="4" step="1"
                           value={meander.depth ?? 2}
-                          onChange={e =>
-                            editUpdater({ meander: { depth: parseInt(e.target.value) } })
-                          }
+                          onChange={e => editUpdater({ meander: { depth: parseInt(e.target.value) } })}
                           className="w-full"
                         />
                         <div className="flex justify-between text-xs text-gray-400 mt-0.5">
@@ -265,9 +240,7 @@ export function PathLibrary({
                         <input
                           type="range" min="0" max="8" step="1"
                           value={meander.points ?? 3}
-                          onChange={e =>
-                            editUpdater({ meander: { points: parseInt(e.target.value) } })
-                          }
+                          onChange={e => editUpdater({ meander: { points: parseInt(e.target.value) } })}
                           className="w-full"
                         />
                         <div className="flex justify-between text-xs text-gray-400 mt-0.5">
@@ -281,7 +254,7 @@ export function PathLibrary({
             </>
           )}
 
-          {/* ── Draw mode: path progress ── */}
+          {/* Draw mode: path progress */}
           {pathToolMode === 'draw' && (
             <div className="border-t border-gray-200 pt-3 space-y-2">
               <p className="text-xs text-gray-500">
@@ -300,32 +273,31 @@ export function PathLibrary({
                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     }`}
                   >
-                    Finish path  (Enter)
+                    Finish path (Enter)
                   </button>
                   <button
                     onClick={onCancel}
                     className="w-full text-xs px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
                   >
-                    Cancel  (Esc)
+                    Cancel (Esc)
                   </button>
                 </>
               )}
             </div>
           )}
 
-          {/* ── Select mode: delete ── */}
+          {/* Select mode: delete */}
           {pathToolMode === 'select' && (
             <div className="border-t border-gray-200 pt-3">
               <button
                 onClick={onDeleteSelected}
                 disabled={!hasSelection}
-                className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                className={`w-full py-1.5 rounded text-xs font-medium border-2 transition-colors ${
                   hasSelection
-                    ? 'bg-red-500 text-white hover:bg-red-600'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
+                    : 'border-gray-200 text-gray-300 cursor-not-allowed'
                 }`}
               >
-                <Trash2 size={14} />
                 Delete {toolLabel}
               </button>
             </div>

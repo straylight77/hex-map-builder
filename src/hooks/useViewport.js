@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 
-const MIN_SCALE = 0.2;
+const MIN_SCALE = 0.1;
 const MAX_SCALE = 4;
 
-const DEFAULT_VIEWPORT = { x: 0, y: 0, scale: 1 };
+const DEFAULT_VIEWPORT = { x: 0, y: 0, scale: 0.5 };
 
 /**
  * Manages the canvas viewport: pan position and zoom scale.

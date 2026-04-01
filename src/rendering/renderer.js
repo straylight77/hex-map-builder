@@ -32,8 +32,31 @@ function drawPathHighlight(ctx, pathObj, haloColor, haloAlpha = 0.55) {
   drawPath(ctx, pathObj.path, pathObj.style);
 }
 
+function isInBounds(q, r, dimensions) {
+  const halfW = dimensions.width / 2;
+  const halfH = dimensions.height / 2;
+  return q >= -halfW && q < halfW && r >= -halfH && r < halfH;
+}
+
+function drawSelectionRing(ctx, x, y, color = '#3b82f6', width = 3) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 180) * (60 * i - 30);
+    const hx = x + HEX_SIZE * Math.cos(angle);
+    const hy = y + HEX_SIZE * Math.sin(angle);
+    if (i === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+  }
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+}
+
 /**
  * Render order (back to front):
+ *   0.  Grey fill for out-of-bounds hexes
  *   1.  Tile fills + patterns
  *   2.  Committed rivers
  *   3.  Committed roads
@@ -41,9 +64,10 @@ function drawPathHighlight(ctx, pathObj, haloColor, haloAlpha = 0.55) {
  *   5.  Grid lines
  *   6.  In-progress path preview
  *   7.  Features
- *   8.  Selected feature hex highlight (blue outline, select mode)
- *   9.  Hex hover highlight
- *   10. Path hover / selection highlights
+ *   8.  Selected feature hex highlight
+ *   9.  Selected tile hex highlight
+ *   10. Hex hover highlight
+ *   11. Path hover / selection highlights
  */
 export function renderMap(canvas, state) {
   if (!canvas) return;
@@ -59,18 +83,31 @@ export function renderMap(canvas, state) {
   const H = canvas.height;
 
   ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#c0c0c0';
+  ctx.fillRect(0, 0, W, H);
+
   ctx.save();
   ctx.translate(W / 2 + state.viewport.x, H / 2 + state.viewport.y);
   ctx.scale(state.viewport.scale, state.viewport.scale);
 
   const { minQ, maxQ, minR, maxR } = visibleRange(W, H, state.viewport);
 
+  // ── 0. Out-of-bounds grey fill ────────────────────────────────────────────
+  for (let r = minR; r <= maxR; r++) {
+    for (let q = minQ; q <= maxQ; q++) {
+      if (isInBounds(q, r, state.dimensions)) continue;
+      const { x, y } = hexToPixel(q, r);
+      drawHex(ctx, x, y, HEX_SIZE, '#b0b0b0', false);
+    }
+  }
+
   // ── 1. Tile fills ─────────────────────────────────────────────────────────
   for (let r = minR; r <= maxR; r++) {
     for (let q = minQ; q <= maxQ; q++) {
+      if (!isInBounds(q, r, state.dimensions)) continue;
       const { x, y } = hexToPixel(q, r);
       const tile = state.tiles.get(hexKey(q, r));
-      if (tile) drawTile(ctx, x, y, tile.type);
+      if (tile) drawTile(ctx, x, y, tile.type, HEX_SIZE, tile);
       else       drawHex(ctx, x, y, HEX_SIZE, '#ffffff', false);
     }
   }
@@ -90,10 +127,11 @@ export function renderMap(canvas, state) {
   // ── 4. Water tiles redrawn ────────────────────────────────────────────────
   for (let r = minR; r <= maxR; r++) {
     for (let q = minQ; q <= maxQ; q++) {
+      if (!isInBounds(q, r, state.dimensions)) continue;
       const tile = state.tiles.get(hexKey(q, r));
       if (tile && WATER_TILE_IDS.has(tile.type)) {
         const { x, y } = hexToPixel(q, r);
-        drawTile(ctx, x, y, tile.type);
+        drawTile(ctx, x, y, tile.type, HEX_SIZE, tile);
       }
     }
   }
@@ -103,7 +141,12 @@ export function renderMap(canvas, state) {
     for (let r = minR; r <= maxR; r++) {
       for (let q = minQ; q <= maxQ; q++) {
         const { x, y } = hexToPixel(q, r);
-        drawGridHex(ctx, x, y, HEX_SIZE, state.tiles.has(hexKey(q, r)));
+        const inBounds = isInBounds(q, r, state.dimensions);
+        if (inBounds) {
+          drawGridHex(ctx, x, y, HEX_SIZE, state.tiles.has(hexKey(q, r)));
+        } else {
+          drawHex(ctx, x, y, HEX_SIZE, null, true, '#888', 0.4);
+        }
       }
     }
   }
@@ -123,41 +166,34 @@ export function renderMap(canvas, state) {
     }
   }
 
-  // ── 8. Selected feature hex highlight (blue, select mode) ─────────────────
+  // ── 8. Selected feature hex highlight ─────────────────────────────────────
   if (state.selectedFeatureHex && state.selectedTool === 'feature' && state.featureToolMode === 'select') {
     const { x, y } = hexToPixel(state.selectedFeatureHex.q, state.selectedFeatureHex.r);
-    // Blue ring — same style as the hover highlight but solid blue to indicate selection
-    ctx.save();
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 180) * (60 * i - 30);
-      const hx = x + HEX_SIZE * Math.cos(angle);
-      const hy = y + HEX_SIZE * Math.sin(angle);
-      if (i === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
-    }
-    ctx.closePath();
-    ctx.stroke();
-    ctx.restore();
+    drawSelectionRing(ctx, x, y, '#3b82f6', 3);
   }
 
-  // ── 9. Hex hover highlight ────────────────────────────────────────────────
+  // ── 9. Selected tile hex highlight ────────────────────────────────────────
+  if (state.selectedTileHex && state.selectedTool === 'tile' && state.tileToolMode === 'select') {
+    const { x, y } = hexToPixel(state.selectedTileHex.q, state.selectedTileHex.r);
+    drawSelectionRing(ctx, x, y, '#3b82f6', 3);
+  }
+
+  // ── 10. Hex hover highlight ───────────────────────────────────────────────
   const isPathTool = state.selectedTool === 'road' || state.selectedTool === 'river';
   const showHexHover =
     state.hoveredHex &&
     (!isPathTool || state.pathToolMode === 'draw') &&
-    // In feature select mode, show hover only over hexes that have features
     (state.selectedTool !== 'feature' || state.featureToolMode === 'draw' ||
      state.features?.has(hexKey(state.hoveredHex.q, state.hoveredHex.r))) &&
-    ['tile', 'feature', 'road', 'river'].includes(state.selectedTool);
+    ['tile', 'feature', 'road', 'river'].includes(state.selectedTool) &&
+    isInBounds(state.hoveredHex.q, state.hoveredHex.r, state.dimensions);
 
   if (showHexHover) {
     const { x, y } = hexToPixel(state.hoveredHex.q, state.hoveredHex.r);
     drawHoverHighlight(ctx, x, y, HEX_SIZE, state.isErasing);
   }
 
-  // ── 10. Path highlights ───────────────────────────────────────────────────
+  // ── 11. Path highlights ───────────────────────────────────────────────────
   if (state.pathToolMode === 'select' && state.hoveredPathId &&
       state.hoveredPathId !== state.selectedPathId) {
     const allPaths = [...(state.roads ?? []), ...(state.rivers ?? [])];

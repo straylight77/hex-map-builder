@@ -33,11 +33,18 @@ export function useMapData() {
 
   // ── Tile operations ───────────────────────────────────────────────────────
 
-  const placeTile = useCallback((q, r, tileType) => {
+  /**
+   * Place a tile. For custom tiles, pass customColor in tileData.
+   * @param {number} q
+   * @param {number} r
+   * @param {string} tileType
+   * @param {object} [extraData] — e.g. { customColor: '#ff0000' }
+   */
+  const placeTile = useCallback((q, r, tileType, extraData = {}) => {
     const key = hexKey(q, r);
     setMapDoc(prev => {
       const tiles = new Map(prev.tiles);
-      tiles.set(key, { type: tileType });
+      tiles.set(key, { type: tileType, ...extraData });
       const { width, height } = prev.dimensions;
       const halfW = width / 2;
       const halfH = height / 2;
@@ -60,12 +67,6 @@ export function useMapData() {
 
   // ── Feature operations ────────────────────────────────────────────────────
 
-  /**
-   * Place a feature on a hex cell. Overwrites any existing feature.
-   * @param {number} q
-   * @param {number} r
-   * @param {{ id, color, size, rotation }} featureData
-   */
   const placeFeature = useCallback((q, r, featureData) => {
     const key = hexKey(q, r);
     setMapDoc(prev => {
@@ -75,9 +76,6 @@ export function useMapData() {
     });
   }, []);
 
-  /**
-   * Remove the feature from a hex cell (if any).
-   */
   const removeFeature = useCallback((q, r) => {
     const key = hexKey(q, r);
     setMapDoc(prev => {
@@ -87,9 +85,6 @@ export function useMapData() {
     });
   }, []);
 
-  /**
-   * Update properties of an existing feature without replacing it.
-   */
   const updateFeature = useCallback((q, r, updates) => {
     const key = hexKey(q, r);
     setMapDoc(prev => {

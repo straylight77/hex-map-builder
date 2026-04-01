@@ -8,20 +8,25 @@ import {
 
 export function useTools() {
   const [selectedTool, setSelectedTool] = useState('tile');
-  const [selectedTile, setSelectedTile] = useState('plains');
-  const [isErasing, setIsErasing] = useState(false);
-  const [libraryColumns, setLibraryColumns] = useState(2);
+  const [selectedTile, setSelectedTile] = useState('custom'); // custom first
+  const [customTileColor, setCustomTileColor] = useState('#cccccc');
+  const [libraryColumns, setLibraryColumns] = useState(2); // kept for compat, fixed at 2
 
-  // ── Feature tool state ────────────────────────────────────────────────────
+  // ── Tile tool ─────────────────────────────────────────────────────────────
+  const [tileToolMode, setTileToolModeState] = useState('draw'); // 'draw' | 'select'
+  const [selectedTileHex, setSelectedTileHex] = useState(null);  // { q, r } | null
+  const [isTileErasing, setIsTileErasing] = useState(false);
+
+  // ── Feature tool ──────────────────────────────────────────────────────────
   const [selectedFeatureId, setSelectedFeatureId] = useState('hamlet');
   const [featureColor, setFeatureColor] = useState(DEFAULT_FEATURE_COLOR);
   const [featureSize, setFeatureSize] = useState(DEFAULT_FEATURE_SIZE);
   const [featureRotation, setFeatureRotation] = useState(DEFAULT_FEATURE_ROTATION);
-  // Draw / Select mode — mirrors pathToolMode pattern exactly
-  const [featureToolMode, setFeatureToolModeState] = useState('draw'); // 'draw' | 'select'
-  const [selectedFeatureHex, setSelectedFeatureHex] = useState(null);  // {q, r} | null
+  const [featureToolMode, setFeatureToolModeState] = useState('draw');
+  const [selectedFeatureHex, setSelectedFeatureHex] = useState(null);
+  const [isFeatureErasing, setIsFeatureErasing] = useState(false);
 
-  // ── Path tool state ───────────────────────────────────────────────────────
+  // ── Path tool ─────────────────────────────────────────────────────────────
   const [pathToolMode, setPathToolModeState] = useState('draw');
   const [selectedPathId, setSelectedPathId] = useState(null);
   const [hoveredPathId, setHoveredPathId] = useState(null);
@@ -29,6 +34,8 @@ export function useTools() {
   const [isDrawingPath, setIsDrawingPath] = useState(false);
   const [roadStyle, setRoadStyle] = useState({ ...DEFAULT_ROAD_STYLE });
   const [riverStyle, setRiverStyle] = useState({ ...DEFAULT_RIVER_STYLE });
+  const [isRoadErasing, setIsRoadErasing] = useState(false);
+  const [isRiverErasing, setIsRiverErasing] = useState(false);
 
   const activePathStyle =
     selectedTool === 'road'  ? roadStyle  :
@@ -42,18 +49,36 @@ export function useTools() {
     setSelectedPathId(null);
     setHoveredPathId(null);
     setSelectedFeatureHex(null);
+    setSelectedTileHex(null);
     setSelectedTool(tool);
     setPathToolModeState('draw');
     setFeatureToolModeState('draw');
-    if (tool !== 'tile') setIsErasing(false);
+    setTileToolModeState('draw');
+    // Deactivate all erasing when switching tools
+    setIsTileErasing(false);
+    setIsFeatureErasing(false);
+    setIsRoadErasing(false);
+    setIsRiverErasing(false);
   }, []);
+
+  // ── Tile tool actions ─────────────────────────────────────────────────────
 
   const selectTile = useCallback((tileId) => {
     setSelectedTile(tileId);
-    setIsErasing(false);
+    setIsTileErasing(false);
   }, []);
 
-  const toggleErase = useCallback(() => setIsErasing(prev => !prev), []);
+  // Legacy: kept for any callers still using isErasing
+  const isErasing = isTileErasing;
+  const toggleErase = useCallback(() => setIsTileErasing(prev => !prev), []);
+
+  const setTileMode = useCallback((mode) => {
+    if (mode === 'draw') setSelectedTileHex(null);
+    setTileToolModeState(mode);
+  }, []);
+
+  const selectTileHex = useCallback((hex) => setSelectedTileHex(hex), []);
+  const clearTileSelection = useCallback(() => setSelectedTileHex(null), []);
 
   // ── Feature tool actions ──────────────────────────────────────────────────
 
@@ -67,13 +92,8 @@ export function useTools() {
     setFeatureToolModeState(mode);
   }, []);
 
-  const selectFeatureHex = useCallback((hex) => {
-    setSelectedFeatureHex(hex); // {q, r} or null
-  }, []);
-
-  const clearFeatureSelection = useCallback(() => {
-    setSelectedFeatureHex(null);
-  }, []);
+  const selectFeatureHex = useCallback((hex) => setSelectedFeatureHex(hex), []);
+  const clearFeatureSelection = useCallback(() => setSelectedFeatureHex(null), []);
 
   const buildFeatureData = useCallback(() => ({
     id:       selectedFeatureId,
@@ -81,6 +101,11 @@ export function useTools() {
     size:     featureSize,
     rotation: featureRotation,
   }), [selectedFeatureId, featureColor, featureSize, featureRotation]);
+
+  const toggleFeatureErase = useCallback(() => {
+    setIsFeatureErasing(prev => !prev);
+    setSelectedFeatureHex(null);
+  }, []);
 
   // ── Path tool mode ────────────────────────────────────────────────────────
 
@@ -130,15 +155,30 @@ export function useTools() {
     }));
   }, []);
 
+  const toggleRoadErase  = useCallback(() => setIsRoadErasing(prev => !prev), []);
+  const toggleRiverErase = useCallback(() => setIsRiverErasing(prev => !prev), []);
+
   const setColumns = useCallback((n) => {
     setLibraryColumns(Math.max(1, Math.min(4, n)));
   }, []);
+
+  // Which erase is active for the current tool
+  const activeToolIsErasing =
+    selectedTool === 'tile'    ? isTileErasing    :
+    selectedTool === 'feature' ? isFeatureErasing :
+    selectedTool === 'road'    ? isRoadErasing    :
+    selectedTool === 'river'   ? isRiverErasing   : false;
 
   return {
     // tool
     selectedTool, selectTool,
     // tile
-    selectedTile, selectTile, isErasing, toggleErase,
+    selectedTile, selectTile,
+    isErasing, toggleErase,           // legacy compat
+    isTileErasing, toggleErase,
+    tileToolMode, setTileMode,
+    selectedTileHex, selectTileHex, clearTileSelection,
+    customTileColor, setCustomTileColor,
     // feature
     selectedFeatureId, selectFeature,
     featureColor, setFeatureColor: setFeatureColorValue,
@@ -146,6 +186,7 @@ export function useTools() {
     featureRotation, setFeatureRotation: setFeatureRotationValue,
     featureToolMode, setFeatureMode,
     selectedFeatureHex, selectFeatureHex, clearFeatureSelection,
+    isFeatureErasing, toggleFeatureErase,
     buildFeatureData,
     // path
     pathToolMode, setPathMode,
@@ -153,6 +194,9 @@ export function useTools() {
     hoveredPathId, hoverPath,
     activePath, isDrawingPath, extendPath, commitPath, cancelPath,
     roadStyle, riverStyle, activePathStyle, updateRoadStyle, updateRiverStyle,
+    isRoadErasing, toggleRoadErase,
+    isRiverErasing, toggleRiverErase,
+    activeToolIsErasing,
     // shared
     libraryColumns, setColumns,
   };

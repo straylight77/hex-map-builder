@@ -24,6 +24,7 @@ export default function App() {
 
   const isPathTool    = tools.selectedTool === 'road' || tools.selectedTool === 'river';
   const isFeatureTool = tools.selectedTool === 'feature';
+  const isTileTool    = tools.selectedTool === 'tile';
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -51,9 +52,14 @@ export default function App() {
     return pixelToHex(world.x, world.y, HEX_SIZE);
   }, [canvasToWorld]);
 
-  // The feature data for the currently selected hex (select mode)
+  // Feature data for selected hex (feature select mode)
   const selectedFeatureData = tools.selectedFeatureHex
     ? mapData.mapDoc.features.get(hexKey(tools.selectedFeatureHex.q, tools.selectedFeatureHex.r)) ?? null
+    : null;
+
+  // Tile data for selected hex (tile select mode)
+  const selectedTileHexData = tools.selectedTileHex
+    ? mapData.mapDoc.tiles.get(hexKey(tools.selectedTileHex.q, tools.selectedTileHex.r)) ?? null
     : null;
 
   // ── Canvas render ──────────────────────────────────────────────────────────
@@ -69,7 +75,7 @@ export default function App() {
       showGrid,
       hoveredHex,
       selectedTool:       tools.selectedTool,
-      isErasing:          tools.isErasing,
+      isErasing:          tools.activeToolIsErasing,
       activePath:         tools.activePath,
       activePathStyle:    tools.activePathStyle,
       pathToolMode:       tools.pathToolMode,
@@ -77,6 +83,8 @@ export default function App() {
       selectedPathId:     tools.selectedPathId,
       featureToolMode:    tools.featureToolMode,
       selectedFeatureHex: tools.selectedFeatureHex,
+      tileToolMode:       tools.tileToolMode,
+      selectedTileHex:    tools.selectedTileHex,
     });
   }, [
     mapData.mapDoc,
@@ -84,7 +92,7 @@ export default function App() {
     showGrid,
     hoveredHex,
     tools.selectedTool,
-    tools.isErasing,
+    tools.activeToolIsErasing,
     tools.activePath,
     tools.activePathStyle,
     tools.pathToolMode,
@@ -92,6 +100,8 @@ export default function App() {
     tools.selectedPathId,
     tools.featureToolMode,
     tools.selectedFeatureHex,
+    tools.tileToolMode,
+    tools.selectedTileHex,
   ]);
 
   // ── Path commit ────────────────────────────────────────────────────────────
@@ -120,7 +130,7 @@ export default function App() {
     tools.clearFeatureSelection();
   }, [tools, mapData]);
 
-  // ── Feature style update (select mode — edits the placed feature live) ─────
+  // ── Feature style update (select mode) ────────────────────────────────────
 
   const handleFeatureSetColor = useCallback((color) => {
     if (tools.featureToolMode === 'select' && tools.selectedFeatureHex) {
@@ -143,6 +153,25 @@ export default function App() {
     tools.setFeatureRotation(rotation);
   }, [tools, mapData]);
 
+  // ── Tile select mode: change tile or custom color on selected hex ──────────
+
+  const handleSelectModeChangeTile = useCallback((tileId) => {
+    tools.selectTile(tileId);
+    if (tools.selectedTileHex) {
+      const extraData = tileId === 'custom' ? { customColor: tools.customTileColor } : {};
+      mapData.placeTile(tools.selectedTileHex.q, tools.selectedTileHex.r, tileId, extraData);
+    }
+  }, [tools, mapData]);
+
+  const handleSelectModeSetCustomColor = useCallback((color) => {
+    tools.setCustomTileColor(color);
+    if (tools.selectedTileHex && tools.tileToolMode === 'select' && selectedTileHexData?.type === 'custom') {
+      mapData.placeTile(tools.selectedTileHex.q, tools.selectedTileHex.r, 'custom', { customColor: color });
+    } else if (tools.tileToolMode === 'draw') {
+      // Just update the draw color; tiles already placed won't change unless re-painted
+    }
+  }, [tools, mapData, selectedTileHexData]);
+
   // ── Keyboard ───────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -155,9 +184,10 @@ export default function App() {
         tools.cancelPath();
         tools.clearPathSelection();
         tools.clearFeatureSelection();
+        tools.clearTileSelection();
       }
 
-      if ((e.key === 'Delete' || e.key === 'Backspace')) {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
         if (tools.selectedPathId) handleDeleteSelectedPath();
         else if (tools.selectedFeatureHex) handleDeleteSelectedFeature();
       }
@@ -173,42 +203,77 @@ export default function App() {
 
   const handleMouseDown = useCallback((e) => {
     if (e.button !== 0 && e.button !== 2) return;
-    if (e.button === 2 && !isFeatureTool) return; // only intercept right-click for features
+    if (e.button === 2 && !isFeatureTool) return;
 
     if (tools.selectedTool === 'hand') {
       viewport.startDrag(e.clientX, e.clientY);
       return;
     }
 
-    if (tools.selectedTool === 'tile') {
+    // ── Tile tool ──
+    if (isTileTool) {
       const hex = canvasToHex(e);
       if (!hex) return;
-      isPaintingRef.current = true;
-      if (tools.isErasing) mapData.eraseTile(hex.q, hex.r);
-      else                 mapData.placeTile(hex.q, hex.r, tools.selectedTile);
+
+      if (tools.isTileErasing) {
+        mapData.eraseTile(hex.q, hex.r);
+        return;
+      }
+
+      if (tools.tileToolMode === 'draw') {
+        isPaintingRef.current = true;
+        const extraData = tools.selectedTile === 'custom'
+          ? { customColor: tools.customTileColor }
+          : {};
+        mapData.placeTile(hex.q, hex.r, tools.selectedTile, extraData);
+      } else {
+        // Select mode: click a painted hex to select it
+        const hasTile = mapData.mapDoc.tiles.has(hexKey(hex.q, hex.r));
+        tools.selectTileHex(hasTile ? hex : null);
+      }
       return;
     }
 
+    // ── Feature tool ──
     if (isFeatureTool) {
       const hex = canvasToHex(e);
       if (!hex) return;
 
+      if (tools.isFeatureErasing) {
+        mapData.removeFeature(hex.q, hex.r);
+        return;
+      }
+
       if (tools.featureToolMode === 'draw') {
-        // Left-click places; right-click removes
         if (e.button === 2) {
           mapData.removeFeature(hex.q, hex.r);
         } else {
           mapData.placeFeature(hex.q, hex.r, tools.buildFeatureData());
         }
       } else {
-        // Select mode — click any hex; select it if it has a feature
+        // Select mode
         const hasFeature = mapData.mapDoc.features.has(hexKey(hex.q, hex.r));
         tools.selectFeatureHex(hasFeature ? hex : null);
       }
       return;
     }
 
+    // ── Path tools ──
     if (isPathTool) {
+      const isErasing = tools.selectedTool === 'road' ? tools.isRoadErasing : tools.isRiverErasing;
+
+      if (isErasing) {
+        // Erase: hit-test and immediately delete the hovered path
+        const world = canvasToWorld(e);
+        if (!world) return;
+        const hitId = hitTestPaths(world, activePaths());
+        if (hitId) {
+          if (tools.selectedTool === 'road') mapData.deleteRoad(hitId);
+          else                               mapData.deleteRiver(hitId);
+        }
+        return;
+      }
+
       if (tools.pathToolMode === 'draw') {
         const hex = canvasToHex(e);
         if (hex) tools.extendPath(hex.q, hex.r);
@@ -219,7 +284,7 @@ export default function App() {
         tools.selectPath(hitId ?? null);
       }
     }
-  }, [tools, mapData, viewport, isPathTool, isFeatureTool, canvasToHex, canvasToWorld, activePaths]);
+  }, [tools, mapData, viewport, isPathTool, isFeatureTool, isTileTool, canvasToHex, canvasToWorld, activePaths]);
 
   const handleContextMenu = useCallback((e) => {
     if (isFeatureTool) e.preventDefault();
@@ -234,19 +299,28 @@ export default function App() {
     const hex = canvasToHex(e);
     if (hex) setHoveredHex(hex);
 
-    if (isPaintingRef.current && tools.selectedTool === 'tile' && hex) {
-      if (tools.isErasing) mapData.eraseTile(hex.q, hex.r);
-      else                 mapData.placeTile(hex.q, hex.r, tools.selectedTile);
+    // Tile painting (drag in draw mode)
+    if (isPaintingRef.current && isTileTool && hex && tools.tileToolMode === 'draw') {
+      if (tools.isTileErasing) {
+        mapData.eraseTile(hex.q, hex.r);
+      } else {
+        const extraData = tools.selectedTile === 'custom'
+          ? { customColor: tools.customTileColor }
+          : {};
+        mapData.placeTile(hex.q, hex.r, tools.selectedTile, extraData);
+      }
     }
 
-    if (isPathTool && tools.pathToolMode === 'select') {
+    // Path hover for select mode
+    if (isPathTool && (tools.pathToolMode === 'select' ||
+        (tools.selectedTool === 'road' ? tools.isRoadErasing : tools.isRiverErasing))) {
       const world = canvasToWorld(e);
       if (world) {
         const hitId = hitTestPaths(world, activePaths());
         tools.hoverPath(hitId ?? null);
       }
     }
-  }, [viewport, tools, mapData, isPathTool, canvasToHex, canvasToWorld, activePaths]);
+  }, [viewport, tools, mapData, isPathTool, isTileTool, canvasToHex, canvasToWorld, activePaths]);
 
   const handleMouseUp = useCallback(() => {
     isPaintingRef.current = false;
@@ -292,6 +366,7 @@ export default function App() {
       activePath: [], activePathStyle: null,
       pathToolMode: 'draw', hoveredPathId: null, selectedPathId: null,
       featureToolMode: 'draw', selectedFeatureHex: null,
+      tileToolMode: 'draw', selectedTileHex: null,
     });
     exportCanvas.toBlob(blob => {
       const url = URL.createObjectURL(blob);
@@ -310,11 +385,20 @@ export default function App() {
 
   // ── Cursor ─────────────────────────────────────────────────────────────────
 
+  const pathIsErasing = isPathTool && (
+    (tools.selectedTool === 'road' ? tools.isRoadErasing : tools.isRiverErasing)
+  );
+
   const cursorStyle =
-    tools.selectedTool === 'hand' || viewport.isDragging        ? 'grab'    :
-    isPathTool && tools.pathToolMode === 'select'               ? 'pointer' :
-    isFeatureTool && tools.featureToolMode === 'select'         ? 'pointer' :
+    tools.selectedTool === 'hand' || viewport.isDragging  ? 'grab'      :
+    tools.activeToolIsErasing || pathIsErasing             ? 'crosshair' :
+    isPathTool && tools.pathToolMode === 'select'          ? 'pointer'   :
+    isFeatureTool && tools.featureToolMode === 'select'    ? 'pointer'   :
+    isTileTool && tools.tileToolMode === 'select'          ? 'pointer'   :
     'crosshair';
+
+  // Zoom: 0.5 scale = 100%
+  const displayZoomPercent = Math.round((viewport.viewport.scale / 0.5) * 100);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -334,8 +418,8 @@ export default function App() {
         <Toolbar
           selectedTool={tools.selectedTool}
           onSelectTool={tools.selectTool}
-          onZoomIn={() => viewport.zoomBy(0.1)}
-          onZoomOut={() => viewport.zoomBy(-0.1)}
+          onZoomIn={() => viewport.zoomBy(0.05)}
+          onZoomOut={() => viewport.zoomBy(-0.05)}
           onResetView={viewport.resetViewport}
         />
 
@@ -354,17 +438,24 @@ export default function App() {
           />
         </div>
 
-        {tools.selectedTool === 'tile' && (
+        {/* ── Tile panel ── */}
+        {isTileTool && (
           <TileLibrary
+            tileToolMode={tools.tileToolMode}
+            onSetTileMode={tools.setTileMode}
             selectedTile={tools.selectedTile}
-            onSelectTile={tools.selectTile}
-            isErasing={tools.isErasing}
+            onSelectTile={handleSelectModeChangeTile}
+            isErasing={tools.isTileErasing}
             onToggleErase={tools.toggleErase}
-            columns={tools.libraryColumns}
-            onSetColumns={tools.setColumns}
+            customTileColor={tools.customTileColor}
+            onSetCustomTileColor={handleSelectModeSetCustomColor}
+            selectedHex={tools.selectedTileHex}
+            selectedHexTileId={selectedTileHexData?.type ?? null}
+            selectedHexCustomColor={selectedTileHexData?.customColor ?? null}
           />
         )}
 
+        {/* ── Feature panel ── */}
         {isFeatureTool && (
           <FeatureLibrary
             featureToolMode={tools.featureToolMode}
@@ -380,11 +471,12 @@ export default function App() {
             onSetSize={handleFeatureSetSize}
             featureRotation={tools.featureRotation}
             onSetRotation={handleFeatureSetRotation}
-            columns={tools.libraryColumns}
-            onSetColumns={tools.setColumns}
+            isErasing={tools.isFeatureErasing}
+            onToggleErase={tools.toggleFeatureErase}
           />
         )}
 
+        {/* ── Road / River panel ── */}
         {isPathTool && (
           <PathLibrary
             toolLabel={tools.selectedTool === 'road' ? 'Road' : 'River'}
@@ -401,13 +493,16 @@ export default function App() {
             selectedPathStyle={selectedPathStyle()}
             onUpdateSelectedStyle={handleUpdateSelectedPathStyle}
             onDeleteSelected={handleDeleteSelectedPath}
-            columns={tools.libraryColumns}
-            onSetColumns={tools.setColumns}
+            isErasing={tools.selectedTool === 'road' ? tools.isRoadErasing : tools.isRiverErasing}
+            onToggleErase={tools.selectedTool === 'road' ? tools.toggleRoadErase : tools.toggleRiverErase}
           />
         )}
       </div>
 
-      <StatusBar dimensions={mapData.mapDoc.dimensions} scale={viewport.viewport.scale} />
+      <StatusBar
+        dimensions={mapData.mapDoc.dimensions}
+        scale={displayZoomPercent}
+      />
 
       <ExpandDialog
         isOpen={showExpandDialog}

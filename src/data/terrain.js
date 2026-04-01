@@ -301,6 +301,15 @@ export const TERRAIN_TILES = [
     color: '#A8B5A0',
     drawPattern: drawReeds,
   },
+  // Special tile: custom color — color is stored per-hex in tile data, not here.
+  // The id is used as a sentinel; actual color comes from tile.customColor.
+  {
+    id: 'custom',
+    name: 'Custom',
+    color: '#cccccc',   // default preview color; overridden per-hex
+    drawPattern: null,
+    isCustom: true,
+  },
 ];
 
 // Lookup by id for O(1) access during rendering
