@@ -1,4 +1,4 @@
-import { Pencil, MousePointer2 } from 'lucide-react';
+import { Pencil, MousePointer2, Eraser } from 'lucide-react';
 
 const PANEL_WIDTH = 268;
 
@@ -8,11 +8,12 @@ const DASH_OPTIONS = [
   { label: 'Dotted', dash: [3, 12]   },
 ];
 
-/**
- * Right-hand panel for the Road and River tools.
- * Fixed width — no expand/collapse controls.
- * Includes Erase button that removes the hovered/selected path on click.
- */
+const MODES = [
+  { id: 'draw',   icon: <Pencil size={14} />,        label: 'Draw'   },
+  { id: 'select', icon: <MousePointer2 size={14} />,  label: 'Select' },
+  { id: 'erase',  icon: <Eraser size={14} />,         label: 'Erase'  },
+];
+
 export function PathLibrary({
   toolLabel,
   isRiver,
@@ -49,46 +50,58 @@ export function PathLibrary({
           <span className="text-sm font-semibold text-gray-700">{toolLabel}s</span>
         </div>
 
-        {/* Draw / Select */}
-        <div className="px-3 py-2 border-b border-gray-200 flex gap-2 flex-shrink-0">
-          <button
-            onClick={() => onSetPathMode('draw')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium border transition-colors ${
-              pathToolMode === 'draw'
-                ? 'bg-blue-500 text-white border-blue-500'
-                : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
-            }`}
-          >
-            <Pencil size={13} /> Draw
-          </button>
-          <button
-            onClick={() => onSetPathMode('select')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium border transition-colors ${
-              pathToolMode === 'select'
-                ? 'bg-blue-500 text-white border-blue-500'
-                : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
-            }`}
-          >
-            <MousePointer2 size={13} /> Select
-          </button>
+        {/* Draw / Select / Erase — unified mode row */}
+        <div className="px-3 py-2 border-b border-gray-200 flex gap-1.5 flex-shrink-0">
+          {MODES.map(({ id, icon, label }) => {
+            const isActive = pathToolMode === id;
+            const isEraseBtn = id === 'erase';
+            return (
+              <button
+                key={id}
+                onClick={() => onSetPathMode(id)}
+                title={label}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded text-xs font-medium border transition-colors ${
+                  isActive
+                    ? isEraseBtn
+                      ? 'bg-red-500 text-white border-red-500'
+                      : 'bg-blue-500 text-white border-blue-500'
+                    : isEraseBtn
+                      ? 'border-red-300 text-red-500 hover:border-red-400 hover:bg-red-50'
+                      : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
+                }`}
+              >
+                {icon}
+                <span style={{ fontSize: '10px' }}>{label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Erase */}
-        <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
-          <button
-            onClick={onToggleErase}
-            className={`w-full py-1.5 rounded text-xs font-medium border-2 transition-colors ${
-              isErasing
-                ? 'bg-red-500 text-white border-red-500'
-                : 'border-red-400 text-red-500 hover:bg-red-50'
-            }`}
-          >
-            Erase {toolLabel}s
-          </button>
-        </div>
+        {/* Delete selected — only in select mode, right below mode row */}
+        {pathToolMode === 'select' && (
+          <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
+            <button
+              onClick={onDeleteSelected}
+              disabled={!hasSelection}
+              className={`w-full py-1.5 rounded text-xs font-medium border-2 transition-colors ${
+                hasSelection
+                  ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
+                  : 'border-gray-200 text-gray-300 cursor-not-allowed'
+              }`}
+            >
+              Delete {toolLabel}
+            </button>
+          </div>
+        )}
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
+
+          {pathToolMode === 'erase' && (
+            <p className="text-xs text-red-500 text-center pt-1">
+              Hover over a {toolLabel.toLowerCase()} and click to erase it.
+            </p>
+          )}
 
           {pathToolMode === 'select' && !hasSelection && (
             <p className="text-xs text-gray-500 text-center pt-2">
@@ -283,23 +296,6 @@ export function PathLibrary({
                   </button>
                 </>
               )}
-            </div>
-          )}
-
-          {/* Select mode: delete */}
-          {pathToolMode === 'select' && (
-            <div className="border-t border-gray-200 pt-3">
-              <button
-                onClick={onDeleteSelected}
-                disabled={!hasSelection}
-                className={`w-full py-1.5 rounded text-xs font-medium border-2 transition-colors ${
-                  hasSelection
-                    ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
-                    : 'border-gray-200 text-gray-300 cursor-not-allowed'
-                }`}
-              >
-                Delete {toolLabel}
-              </button>
             </div>
           )}
 

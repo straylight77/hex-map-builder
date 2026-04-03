@@ -27,7 +27,6 @@ export function drawTile(ctx, x, y, terrainId, size = HEX_SIZE, tileData = null)
   const terrain = TERRAIN_MAP[terrainId];
   if (!terrain) return;
 
-  // For custom tiles, use the per-hex stored color
   const fillColor = (terrain.isCustom && tileData?.customColor)
     ? tileData.customColor
     : terrain.color;
@@ -54,11 +53,26 @@ export function drawGridHex(ctx, x, y, size, hasTile) {
 }
 
 // ---------------------------------------------------------------------------
-// Hover highlight
+// Hover highlight — thicker border, distinct colors for erase vs normal
 // ---------------------------------------------------------------------------
 
 export function drawHoverHighlight(ctx, x, y, size, erasing) {
-  drawHex(ctx, x, y, size, null, true, erasing ? '#ff6b6b' : '#60a5fa', 3);
+  // Filled tint
+  ctx.save();
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 180) * (60 * i - 30);
+    const hx = x + size * Math.cos(angle);
+    const hy = y + size * Math.sin(angle);
+    if (i === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+  }
+  ctx.closePath();
+  ctx.fillStyle = erasing ? 'rgba(239,68,68,0.15)' : 'rgba(96,165,250,0.15)';
+  ctx.fill();
+  ctx.restore();
+
+  // Thick border
+  drawHex(ctx, x, y, size, null, true, erasing ? '#ef4444' : '#3b82f6', 5);
 }
 
 // ---------------------------------------------------------------------------
@@ -93,14 +107,6 @@ export function renderTilePreview(canvas, terrain, displaySize, customColor = nu
 // Feature stamp
 // ---------------------------------------------------------------------------
 
-/**
- * Draw a feature icon centered at pixel position (x, y).
- *
- * @param {CanvasRenderingContext2D} ctx
- * @param {number} x
- * @param {number} y
- * @param {{ id, color, size, rotation }} featureData
- */
 export function drawFeature(ctx, x, y, featureData) {
   const icon = FEATURE_MAP[featureData.id];
   if (!icon) return;

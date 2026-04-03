@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Pencil, MousePointer2 } from 'lucide-react';
+import { Pencil, MousePointer2, Eraser } from 'lucide-react';
 import {
   FEATURES_BY_CATEGORY,
   FEATURE_MAP,
@@ -18,6 +18,12 @@ const COLOR_PRESETS = [
 ];
 
 const ROTATIONS = [0, 60, 120, 180, 240, 300];
+
+const MODES = [
+  { id: 'draw',   icon: <Pencil size={14} />,        label: 'Draw'   },
+  { id: 'select', icon: <MousePointer2 size={14} />,  label: 'Select' },
+  { id: 'erase',  icon: <Eraser size={14} />,         label: 'Erase'  },
+];
 
 function FeaturePreview({ feature, color }) {
   const canvasRef = useRef(null);
@@ -44,11 +50,6 @@ function FeaturePreview({ feature, color }) {
   );
 }
 
-/**
- * Right-hand panel for the Feature tool.
- * Color, size, rotation controls are always visible above the gallery.
- * Erase button removes the feature on the clicked hex.
- */
 export function FeatureLibrary({
   featureToolMode,
   onSetFeatureMode,
@@ -68,7 +69,6 @@ export function FeatureLibrary({
 }) {
   const hasSelection = !!selectedFeatureHex && !!selectedFeatureData;
 
-  // In select mode with a selection, controls reflect the placed feature's data
   const displayColor    = featureToolMode === 'select' && hasSelection ? selectedFeatureData.color    : featureColor;
   const displaySize     = featureToolMode === 'select' && hasSelection ? selectedFeatureData.size     : featureSize;
   const displayRotation = featureToolMode === 'select' && hasSelection ? selectedFeatureData.rotation : featureRotation;
@@ -84,111 +84,36 @@ export function FeatureLibrary({
           <span className="text-sm font-semibold text-gray-700">Features</span>
         </div>
 
-        {/* Draw / Select */}
-        <div className="px-3 py-2 border-b border-gray-200 flex gap-2 flex-shrink-0">
-          <button
-            onClick={() => onSetFeatureMode('draw')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium border transition-colors ${
-              featureToolMode === 'draw'
-                ? 'bg-blue-500 text-white border-blue-500'
-                : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
-            }`}
-          >
-            <Pencil size={13} /> Draw
-          </button>
-          <button
-            onClick={() => onSetFeatureMode('select')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium border transition-colors ${
-              featureToolMode === 'select'
-                ? 'bg-blue-500 text-white border-blue-500'
-                : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
-            }`}
-          >
-            <MousePointer2 size={13} /> Select
-          </button>
+        {/* Draw / Select / Erase — unified mode row */}
+        <div className="px-3 py-2 border-b border-gray-200 flex gap-1.5 flex-shrink-0">
+          {MODES.map(({ id, icon, label }) => {
+            const isActive = featureToolMode === id;
+            const isEraseBtn = id === 'erase';
+            return (
+              <button
+                key={id}
+                onClick={() => onSetFeatureMode(id)}
+                title={label}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded text-xs font-medium border transition-colors ${
+                  isActive
+                    ? isEraseBtn
+                      ? 'bg-red-500 text-white border-red-500'
+                      : 'bg-blue-500 text-white border-blue-500'
+                    : isEraseBtn
+                      ? 'border-red-300 text-red-500 hover:border-red-400 hover:bg-red-50'
+                      : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
+                }`}
+              >
+                {icon}
+                <span style={{ fontSize: '10px' }}>{label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Erase */}
-        <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
-          <button
-            onClick={onToggleErase}
-            className={`w-full py-1.5 rounded text-xs font-medium border-2 transition-colors ${
-              isErasing
-                ? 'bg-red-500 text-white border-red-500'
-                : 'border-red-400 text-red-500 hover:bg-red-50'
-            }`}
-          >
-            Erase Features
-          </button>
-        </div>
-
-        {/* ── Style controls — always visible ── */}
-        <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 space-y-3">
-
-          {/* Color */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Color</label>
-            <div className="flex gap-1 flex-wrap">
-              {COLOR_PRESETS.map(({ label, value }) => (
-                <button
-                  key={value}
-                  title={label}
-                  onClick={() => onSetColor(value)}
-                  className={`w-6 h-6 rounded-full border-2 transition-all ${
-                    displayColor === value ? 'border-blue-500 scale-110' : 'border-gray-300'
-                  }`}
-                  style={{
-                    backgroundColor: value,
-                    boxShadow: value === '#ffffff' ? 'inset 0 0 0 1px #ccc' : undefined,
-                  }}
-                />
-              ))}
-              <input
-                type="color"
-                value={displayColor}
-                onChange={e => onSetColor(e.target.value)}
-                title="Custom color"
-                className="w-6 h-6 rounded cursor-pointer border border-gray-300"
-              />
-            </div>
-          </div>
-
-          {/* Size */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Size</label>
-            <div className="flex gap-1">
-              {['small', 'medium', 'large'].map(s => (
-                <button key={s} onClick={() => onSetSize(s)}
-                  className={`flex-1 text-xs py-1 rounded border capitalize transition-colors ${
-                    displaySize === s
-                      ? 'bg-blue-500 text-white border-blue-500'
-                      : 'border-gray-300 text-gray-600 hover:border-gray-400'
-                  }`}
-                >{s}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* Rotation */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Rotation: {displayRotation}°
-            </label>
-            <div className="grid grid-cols-3 gap-1">
-              {ROTATIONS.map(r => (
-                <button key={r} onClick={() => onSetRotation(r)}
-                  className={`text-xs py-1 rounded border transition-colors ${
-                    displayRotation === r
-                      ? 'bg-blue-500 text-white border-blue-500'
-                      : 'border-gray-300 text-gray-600 hover:border-gray-400'
-                  }`}
-                >{r}°</button>
-              ))}
-            </div>
-          </div>
-
-          {/* Select-mode: delete button */}
-          {featureToolMode === 'select' && (
+        {/* Delete selected — only in select mode, right below mode row */}
+        {featureToolMode === 'select' && (
+          <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
             <button
               onClick={onDeleteSelected}
               disabled={!hasSelection}
@@ -200,20 +125,91 @@ export function FeatureLibrary({
             >
               Delete Selected Feature
             </button>
-          )}
-        </div>
-
-        {/* Select-mode hint */}
-        {featureToolMode === 'select' && !hasSelection && (
-          <div className="px-3 pt-2 flex-shrink-0">
-            <p className="text-xs text-gray-400">Click a hex with a feature to select it.</p>
           </div>
         )}
-        {featureToolMode === 'select' && hasSelection && (
+
+        {/* Erase mode hint */}
+        {featureToolMode === 'erase' && (
           <div className="px-3 pt-2 flex-shrink-0">
-            <p className="text-xs text-blue-600 font-medium">
-              {displayFeature?.name ?? 'Feature'} selected
-            </p>
+            <p className="text-xs text-red-500">Click a hex to erase its feature.</p>
+          </div>
+        )}
+
+        {/* Style controls — visible in draw mode and select mode */}
+        {(featureToolMode === 'draw' || featureToolMode === 'select') && (
+          <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 space-y-3">
+
+            {/* Select mode status */}
+            {featureToolMode === 'select' && !hasSelection && (
+              <p className="text-xs text-gray-400">Click a hex with a feature to select it.</p>
+            )}
+            {featureToolMode === 'select' && hasSelection && (
+              <p className="text-xs text-blue-600 font-medium">
+                {displayFeature?.name ?? 'Feature'} selected
+              </p>
+            )}
+
+            {/* Color */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Color</label>
+              <div className="flex gap-1 flex-wrap">
+                {COLOR_PRESETS.map(({ label, value }) => (
+                  <button
+                    key={value}
+                    title={label}
+                    onClick={() => onSetColor(value)}
+                    className={`w-6 h-6 rounded-full border-2 transition-all ${
+                      displayColor === value ? 'border-blue-500 scale-110' : 'border-gray-300'
+                    }`}
+                    style={{
+                      backgroundColor: value,
+                      boxShadow: value === '#ffffff' ? 'inset 0 0 0 1px #ccc' : undefined,
+                    }}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={displayColor}
+                  onChange={e => onSetColor(e.target.value)}
+                  title="Custom color"
+                  className="w-6 h-6 rounded cursor-pointer border border-gray-300"
+                />
+              </div>
+            </div>
+
+            {/* Size */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Size</label>
+              <div className="flex gap-1">
+                {['small', 'medium', 'large'].map(s => (
+                  <button key={s} onClick={() => onSetSize(s)}
+                    className={`flex-1 text-xs py-1 rounded border capitalize transition-colors ${
+                      displaySize === s
+                        ? 'bg-blue-500 text-white border-blue-500'
+                        : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                    }`}
+                  >{s}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Rotation */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Rotation: {displayRotation}°
+              </label>
+              <div className="grid grid-cols-3 gap-1">
+                {ROTATIONS.map(r => (
+                  <button key={r} onClick={() => onSetRotation(r)}
+                    className={`text-xs py-1 rounded border transition-colors ${
+                      displayRotation === r
+                        ? 'bg-blue-500 text-white border-blue-500'
+                        : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                    }`}
+                  >{r}°</button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -252,8 +248,8 @@ export function FeatureLibrary({
           </div>
         )}
 
-        {/* Select mode: no gallery, just a spacer */}
-        {featureToolMode === 'select' && <div className="flex-1" />}
+        {/* Select / Erase mode: spacer */}
+        {(featureToolMode === 'select' || featureToolMode === 'erase') && <div className="flex-1" />}
 
       </div>
     </div>

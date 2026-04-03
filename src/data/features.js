@@ -5,15 +5,15 @@
 // Caller applies ctx.scale(sizeMultiplier) before invoking.
 //
 // Shape / status system:
-//   Settlements   → circle family
+//   Settlements    → circle family
 //   Fortifications → square family
 //   Landmarks      → diamond family
 //
-//   open          = small / humble
-//   solid         = established
+//   solid         = small / humble
+//   open          = established
 //   nested        = major (open outer + solid inner)
 //   star inside   = exceptional
-//   cross         = ruined
+//   slash         = ruined
 // ---------------------------------------------------------------------------
 
 // ── Drawing helpers ──────────────────────────────────────────────────────────
@@ -334,7 +334,7 @@ export const FEATURE_ICONS = [
       ctx.restore();
     } },
 
-  // Barrows: ancient burial grounds, three solid dots arranged in a triangle
+  // Barrows: ancient burial grounds (three solid dots arranged in a triangle)
   { id: 'barrows', name: 'Barrows', category: 'Other',
     draw(ctx, color) {
       // Triangle of dots: one top-center, two bottom

@@ -38,7 +38,7 @@ function isInBounds(q, r, dimensions) {
   return q >= -halfW && q < halfW && r >= -halfH && r < halfH;
 }
 
-function drawSelectionRing(ctx, x, y, color = '#3b82f6', width = 3) {
+function drawSelectionRing(ctx, x, y, color = '#3b82f6', width = 5) {
   ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
@@ -169,38 +169,74 @@ export function renderMap(canvas, state) {
   // ── 8. Selected feature hex highlight ─────────────────────────────────────
   if (state.selectedFeatureHex && state.selectedTool === 'feature' && state.featureToolMode === 'select') {
     const { x, y } = hexToPixel(state.selectedFeatureHex.q, state.selectedFeatureHex.r);
-    drawSelectionRing(ctx, x, y, '#3b82f6', 3);
+    drawSelectionRing(ctx, x, y, '#3b82f6', 5);
   }
 
   // ── 9. Selected tile hex highlight ────────────────────────────────────────
   if (state.selectedTileHex && state.selectedTool === 'tile' && state.tileToolMode === 'select') {
     const { x, y } = hexToPixel(state.selectedTileHex.q, state.selectedTileHex.r);
-    drawSelectionRing(ctx, x, y, '#3b82f6', 3);
+    drawSelectionRing(ctx, x, y, '#3b82f6', 5);
   }
 
   // ── 10. Hex hover highlight ───────────────────────────────────────────────
   const isPathTool = state.selectedTool === 'road' || state.selectedTool === 'river';
-  const showHexHover =
-    state.hoveredHex &&
-    (!isPathTool || state.pathToolMode === 'draw') &&
-    (state.selectedTool !== 'feature' || state.featureToolMode === 'draw' ||
-     state.features?.has(hexKey(state.hoveredHex.q, state.hoveredHex.r))) &&
-    ['tile', 'feature', 'road', 'river'].includes(state.selectedTool) &&
-    isInBounds(state.hoveredHex.q, state.hoveredHex.r, state.dimensions);
 
-  if (showHexHover) {
-    const { x, y } = hexToPixel(state.hoveredHex.q, state.hoveredHex.r);
-    drawHoverHighlight(ctx, x, y, HEX_SIZE, state.isErasing);
+  if (state.hoveredHex && ['tile', 'feature', 'road', 'river'].includes(state.selectedTool) &&
+      isInBounds(state.hoveredHex.q, state.hoveredHex.r, state.dimensions)) {
+    const hq = state.hoveredHex.q, hr = state.hoveredHex.r;
+    const { x, y } = hexToPixel(hq, hr);
+
+    // Draw mode — always highlight
+    // Erase mode — always highlight (red)
+    // Select mode — only highlight if the hex has something selectable
+    let shouldHighlight = false;
+    let isErase = false;
+
+    if (state.selectedTool === 'tile') {
+      if (state.tileToolMode === 'draw') {
+        shouldHighlight = true;
+      } else if (state.tileToolMode === 'erase') {
+        shouldHighlight = state.tiles.has(hexKey(hq, hr));
+        isErase = true;
+      } else if (state.tileToolMode === 'select') {
+        shouldHighlight = state.tiles.has(hexKey(hq, hr));
+      }
+    } else if (state.selectedTool === 'feature') {
+      if (state.featureToolMode === 'draw') {
+        shouldHighlight = true;
+      } else if (state.featureToolMode === 'erase') {
+        shouldHighlight = state.features?.has(hexKey(hq, hr));
+        isErase = true;
+      } else if (state.featureToolMode === 'select') {
+        shouldHighlight = state.features?.has(hexKey(hq, hr));
+      }
+    } else if (isPathTool) {
+      // Path draw mode uses hex hover; select/erase use path-level highlights
+      if (state.pathToolMode === 'draw') shouldHighlight = true;
+    }
+
+    if (shouldHighlight) {
+      drawHoverHighlight(ctx, x, y, HEX_SIZE, isErase);
+    }
   }
 
   // ── 11. Path highlights ───────────────────────────────────────────────────
+  // Erase mode: hovered path gets a red highlight (doesn't disappear)
+  if (state.pathToolMode === 'erase' && state.hoveredPathId) {
+    const allPaths = [...(state.roads ?? []), ...(state.rivers ?? [])];
+    const hovered = allPaths.find(p => p.id === state.hoveredPathId);
+    if (hovered) drawPathHighlight(ctx, hovered, '#ef4444', 0.7);
+  }
+
+  // Select mode: hovered path (not yet selected) — blue
   if (state.pathToolMode === 'select' && state.hoveredPathId &&
       state.hoveredPathId !== state.selectedPathId) {
     const allPaths = [...(state.roads ?? []), ...(state.rivers ?? [])];
     const hovered = allPaths.find(p => p.id === state.hoveredPathId);
-    if (hovered) drawPathHighlight(ctx, hovered, '#ef4444', 0.6);
+    if (hovered) drawPathHighlight(ctx, hovered, '#3b82f6', 0.6);
   }
 
+  // Selected path (blue)
   if (state.selectedPathId) {
     const allPaths = [...(state.roads ?? []), ...(state.rivers ?? [])];
     const selected = allPaths.find(p => p.id === state.selectedPathId);

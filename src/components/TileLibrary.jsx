@@ -1,22 +1,20 @@
-import { Pencil, MousePointer2 } from 'lucide-react';
+import { Pencil, MousePointer2, Eraser } from 'lucide-react';
 import { TERRAIN_TILES } from '../data/terrain.js';
 import { TilePreview } from './TilePreview.jsx';
 
 export const PANEL_WIDTH = 268;
 const GRID_COLUMNS = 2;
 
-// Custom tile first, then the rest in original order
 const CUSTOM_TILE  = TERRAIN_TILES.find(t => t.isCustom);
 const OTHER_TILES  = TERRAIN_TILES.filter(t => !t.isCustom);
 export const ORDERED_TILES = CUSTOM_TILE ? [CUSTOM_TILE, ...OTHER_TILES] : [...TERRAIN_TILES];
 
-/**
- * Right-hand panel for the Tile tool.
- *
- * Draw mode   — clicking a hex paints the selected tile.
- * Select mode — clicking a painted hex selects it; controls edit that hex's tile/color.
- * Erase       — removes the tile on click (independent of draw/select mode).
- */
+const MODES = [
+  { id: 'draw',   icon: <Pencil size={14} />,        label: 'Draw'   },
+  { id: 'select', icon: <MousePointer2 size={14} />,  label: 'Select' },
+  { id: 'erase',  icon: <Eraser size={14} />,         label: 'Erase'  },
+];
+
 export function TileLibrary({
   tileToolMode,
   onSetTileMode,
@@ -32,12 +30,10 @@ export function TileLibrary({
 }) {
   const hasSelection = !!selectedHex && !!selectedHexTileId;
 
-  // Which tile to highlight in the grid
   const activeTileId = (tileToolMode === 'select' && hasSelection)
     ? selectedHexTileId
     : selectedTile;
 
-  // Which custom color to show / edit
   const activeCustomColor =
     (tileToolMode === 'select' && hasSelection && selectedHexTileId === 'custom')
       ? (selectedHexCustomColor ?? customTileColor)
@@ -52,42 +48,31 @@ export function TileLibrary({
           <span className="text-sm font-semibold text-gray-700">Tiles</span>
         </div>
 
-        {/* Draw / Select */}
-        <div className="px-3 py-2 border-b border-gray-200 flex gap-2 flex-shrink-0">
-          <button
-            onClick={() => onSetTileMode('draw')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium border transition-colors ${
-              tileToolMode === 'draw'
-                ? 'bg-blue-500 text-white border-blue-500'
-                : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
-            }`}
-          >
-            <Pencil size={13} /> Draw
-          </button>
-          <button
-            onClick={() => onSetTileMode('select')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium border transition-colors ${
-              tileToolMode === 'select'
-                ? 'bg-blue-500 text-white border-blue-500'
-                : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
-            }`}
-          >
-            <MousePointer2 size={13} /> Select
-          </button>
-        </div>
-
-        {/* Erase */}
-        <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
-          <button
-            onClick={onToggleErase}
-            className={`w-full py-1.5 rounded text-xs font-medium border-2 transition-colors ${
-              isErasing
-                ? 'bg-red-500 text-white border-red-500'
-                : 'border-red-400 text-red-500 hover:bg-red-50'
-            }`}
-          >
-            Erase Tiles
-          </button>
+        {/* Draw / Select / Erase — unified mode row */}
+        <div className="px-3 py-2 border-b border-gray-200 flex gap-1.5 flex-shrink-0">
+          {MODES.map(({ id, icon, label }) => {
+            const isActive = tileToolMode === id;
+            const isEraseBtn = id === 'erase';
+            return (
+              <button
+                key={id}
+                onClick={() => onSetTileMode(id)}
+                title={label}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded text-xs font-medium border transition-colors ${
+                  isActive
+                    ? isEraseBtn
+                      ? 'bg-red-500 text-white border-red-500'
+                      : 'bg-blue-500 text-white border-blue-500'
+                    : isEraseBtn
+                      ? 'border-red-300 text-red-500 hover:border-red-400 hover:bg-red-50'
+                      : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
+                }`}
+              >
+                {icon}
+                <span style={{ fontSize: '10px' }}>{label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Custom color — always visible */}
@@ -111,6 +96,13 @@ export function TileLibrary({
           </div>
         )}
 
+        {/* Erase mode hint */}
+        {tileToolMode === 'erase' && (
+          <div className="px-3 pt-2 flex-shrink-0">
+            <p className="text-xs text-red-500">Click a hex to erase its tile.</p>
+          </div>
+        )}
+
         {/* Tile grid */}
         <div className="flex-1 overflow-y-auto p-2">
           <div
@@ -122,7 +114,7 @@ export function TileLibrary({
                 key={terrain.id}
                 onClick={() => onSelectTile(terrain.id)}
                 className={`flex flex-col items-center p-2 rounded border-2 transition-all ${
-                  activeTileId === terrain.id && !isErasing
+                  activeTileId === terrain.id && tileToolMode !== 'erase'
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-300 hover:border-gray-400'
                 }`}

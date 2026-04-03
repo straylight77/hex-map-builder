@@ -52,12 +52,10 @@ export default function App() {
     return pixelToHex(world.x, world.y, HEX_SIZE);
   }, [canvasToWorld]);
 
-  // Feature data for selected hex (feature select mode)
   const selectedFeatureData = tools.selectedFeatureHex
     ? mapData.mapDoc.features.get(hexKey(tools.selectedFeatureHex.q, tools.selectedFeatureHex.r)) ?? null
     : null;
 
-  // Tile data for selected hex (tile select mode)
   const selectedTileHexData = tools.selectedTileHex
     ? mapData.mapDoc.tiles.get(hexKey(tools.selectedTileHex.q, tools.selectedTileHex.r)) ?? null
     : null;
@@ -153,7 +151,7 @@ export default function App() {
     tools.setFeatureRotation(rotation);
   }, [tools, mapData]);
 
-  // ── Tile select mode: change tile or custom color on selected hex ──────────
+  // ── Tile select mode ───────────────────────────────────────────────────────
 
   const handleSelectModeChangeTile = useCallback((tileId) => {
     tools.selectTile(tileId);
@@ -167,8 +165,6 @@ export default function App() {
     tools.setCustomTileColor(color);
     if (tools.selectedTileHex && tools.tileToolMode === 'select' && selectedTileHexData?.type === 'custom') {
       mapData.placeTile(tools.selectedTileHex.q, tools.selectedTileHex.r, 'custom', { customColor: color });
-    } else if (tools.tileToolMode === 'draw') {
-      // Just update the draw color; tiles already placed won't change unless re-painted
     }
   }, [tools, mapData, selectedTileHexData]);
 
@@ -215,19 +211,16 @@ export default function App() {
       const hex = canvasToHex(e);
       if (!hex) return;
 
-      if (tools.isTileErasing) {
-        mapData.eraseTile(hex.q, hex.r);
-        return;
-      }
-
       if (tools.tileToolMode === 'draw') {
         isPaintingRef.current = true;
         const extraData = tools.selectedTile === 'custom'
           ? { customColor: tools.customTileColor }
           : {};
         mapData.placeTile(hex.q, hex.r, tools.selectedTile, extraData);
-      } else {
-        // Select mode: click a painted hex to select it
+      } else if (tools.tileToolMode === 'erase') {
+        isPaintingRef.current = true;
+        mapData.eraseTile(hex.q, hex.r);
+      } else if (tools.tileToolMode === 'select') {
         const hasTile = mapData.mapDoc.tiles.has(hexKey(hex.q, hex.r));
         tools.selectTileHex(hasTile ? hex : null);
       }
@@ -250,8 +243,7 @@ export default function App() {
         } else {
           mapData.placeFeature(hex.q, hex.r, tools.buildFeatureData());
         }
-      } else {
-        // Select mode
+      } else if (tools.featureToolMode === 'select') {
         const hasFeature = mapData.mapDoc.features.has(hexKey(hex.q, hex.r));
         tools.selectFeatureHex(hasFeature ? hex : null);
       }
@@ -260,10 +252,9 @@ export default function App() {
 
     // ── Path tools ──
     if (isPathTool) {
-      const isErasing = tools.selectedTool === 'road' ? tools.isRoadErasing : tools.isRiverErasing;
+      const isErasing = tools.pathToolMode === 'erase';
 
       if (isErasing) {
-        // Erase: hit-test and immediately delete the hovered path
         const world = canvasToWorld(e);
         if (!world) return;
         const hitId = hitTestPaths(world, activePaths());
@@ -277,7 +268,7 @@ export default function App() {
       if (tools.pathToolMode === 'draw') {
         const hex = canvasToHex(e);
         if (hex) tools.extendPath(hex.q, hex.r);
-      } else {
+      } else if (tools.pathToolMode === 'select') {
         const world = canvasToWorld(e);
         if (!world) return;
         const hitId = hitTestPaths(world, activePaths());
@@ -299,21 +290,20 @@ export default function App() {
     const hex = canvasToHex(e);
     if (hex) setHoveredHex(hex);
 
-    // Tile painting (drag in draw mode)
-    if (isPaintingRef.current && isTileTool && hex && tools.tileToolMode === 'draw') {
-      if (tools.isTileErasing) {
-        mapData.eraseTile(hex.q, hex.r);
-      } else {
+    // Tile painting/erasing (drag in draw or erase mode)
+    if (isPaintingRef.current && isTileTool && hex) {
+      if (tools.tileToolMode === 'draw') {
         const extraData = tools.selectedTile === 'custom'
           ? { customColor: tools.customTileColor }
           : {};
         mapData.placeTile(hex.q, hex.r, tools.selectedTile, extraData);
+      } else if (tools.tileToolMode === 'erase') {
+        mapData.eraseTile(hex.q, hex.r);
       }
     }
 
-    // Path hover for select mode
-    if (isPathTool && (tools.pathToolMode === 'select' ||
-        (tools.selectedTool === 'road' ? tools.isRoadErasing : tools.isRiverErasing))) {
+    // Path hover for select and erase modes
+    if (isPathTool && (tools.pathToolMode === 'select' || tools.pathToolMode === 'erase')) {
       const world = canvasToWorld(e);
       if (world) {
         const hitId = hitTestPaths(world, activePaths());
@@ -385,19 +375,15 @@ export default function App() {
 
   // ── Cursor ─────────────────────────────────────────────────────────────────
 
-  const pathIsErasing = isPathTool && (
-    (tools.selectedTool === 'road' ? tools.isRoadErasing : tools.isRiverErasing)
-  );
-
   const cursorStyle =
     tools.selectedTool === 'hand' || viewport.isDragging  ? 'grab'      :
-    tools.activeToolIsErasing || pathIsErasing             ? 'crosshair' :
+    tools.activeToolIsErasing                              ? 'crosshair' :
     isPathTool && tools.pathToolMode === 'select'          ? 'pointer'   :
+    isPathTool && tools.pathToolMode === 'erase'           ? 'crosshair' :
     isFeatureTool && tools.featureToolMode === 'select'    ? 'pointer'   :
     isTileTool && tools.tileToolMode === 'select'          ? 'pointer'   :
     'crosshair';
 
-  // Zoom: 0.5 scale = 100%
   const displayZoomPercent = Math.round((viewport.viewport.scale / 0.5) * 100);
 
   // ── Render ─────────────────────────────────────────────────────────────────
