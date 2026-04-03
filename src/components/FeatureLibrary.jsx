@@ -17,8 +17,6 @@ const COLOR_PRESETS = [
   { label: 'Gold',      value: '#b89500' },
 ];
 
-const ROTATIONS = [0, 60, 120, 180, 240, 300];
-
 const MODES = [
   { id: 'draw',   icon: <Pencil size={14} />,        label: 'Draw'   },
   { id: 'select', icon: <MousePointer2 size={14} />,  label: 'Select' },
@@ -195,19 +193,21 @@ export function FeatureLibrary({
 
             {/* Rotation */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Rotation: {displayRotation}°
-              </label>
-              <div className="grid grid-cols-3 gap-1">
-                {ROTATIONS.map(r => (
-                  <button key={r} onClick={() => onSetRotation(r)}
-                    className={`text-xs py-1 rounded border transition-colors ${
-                      displayRotation === r
-                        ? 'bg-blue-500 text-white border-blue-500'
-                        : 'border-gray-300 text-gray-600 hover:border-gray-400'
-                    }`}
-                  >{r}°</button>
-                ))}
+              <label className="block text-xs font-medium text-gray-600 mb-1">Rotation</label>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => onSetRotation(((displayRotation - 30) + 360) % 360)}
+                  className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50 text-sm font-bold flex-shrink-0"
+                  title="Rotate left 30°"
+                >‹</button>
+                <span className="flex-1 text-center text-xs text-gray-700 font-medium tabular-nums">
+                  {displayRotation}°
+                </span>
+                <button
+                  onClick={() => onSetRotation((displayRotation + 30) % 360)}
+                  className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50 text-sm font-bold flex-shrink-0"
+                  title="Rotate right 30°"
+                >›</button>
               </div>
             </div>
           </div>

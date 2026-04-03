@@ -373,6 +373,12 @@ export default function App() {
     else        mapData.updateRiver(tools.selectedPathId, updates);
   }, [tools.selectedPathId, mapData]);
 
+  const handleDeleteSelectedTile = useCallback(() => {
+    if (!tools.selectedTileHex) return;
+    mapData.eraseTile(tools.selectedTileHex.q, tools.selectedTileHex.r);
+    tools.clearTileSelection();
+  }, [tools, mapData]);
+
   // ── Cursor ─────────────────────────────────────────────────────────────────
 
   const cursorStyle =
@@ -438,6 +444,7 @@ export default function App() {
             selectedHex={tools.selectedTileHex}
             selectedHexTileId={selectedTileHexData?.type ?? null}
             selectedHexCustomColor={selectedTileHexData?.customColor ?? null}
+            onDeleteSelected={handleDeleteSelectedTile}
           />
         )}
 

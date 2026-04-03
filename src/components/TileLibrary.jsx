@@ -27,6 +27,7 @@ export function TileLibrary({
   selectedHex,
   selectedHexTileId,
   selectedHexCustomColor,
+  onDeleteSelected,
 }) {
   const hasSelection = !!selectedHex && !!selectedHexTileId;
 
@@ -75,62 +76,123 @@ export function TileLibrary({
           })}
         </div>
 
-        {/* Custom color — always visible */}
-        <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
-          <label className="block text-xs font-medium text-gray-600 mb-1">Custom tile color</label>
-          <input
-            type="color"
-            value={activeCustomColor}
-            onChange={e => onSetCustomTileColor(e.target.value)}
-            className="w-full h-8 cursor-pointer rounded border border-gray-300"
-          />
-        </div>
+        {/* Custom color — only in draw mode */}
+        {tileToolMode === 'draw' && (
+          <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Custom tile color</label>
+            <input
+              type="color"
+              value={activeCustomColor}
+              onChange={e => onSetCustomTileColor(e.target.value)}
+              className="w-full h-8 cursor-pointer rounded border border-gray-300"
+            />
+          </div>
+        )}
 
-        {/* Select-mode hint */}
+        {/* Select mode: delete button + hint */}
         {tileToolMode === 'select' && (
-          <div className="px-3 pt-2 flex-shrink-0">
-            {hasSelection
-              ? <p className="text-xs text-blue-600 font-medium">Hex selected — pick a new tile below</p>
-              : <p className="text-xs text-gray-400">Click a painted hex to select it.</p>
-            }
+          <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 space-y-2">
+            <button
+              onClick={onDeleteSelected}
+              disabled={!hasSelection}
+              className={`w-full py-1.5 rounded text-xs font-medium border-2 transition-colors ${
+                hasSelection
+                  ? 'bg-red-500 text-white border-red-500 hover:bg-red-600'
+                  : 'border-gray-200 text-gray-300 cursor-not-allowed'
+              }`}
+            >
+              Delete Tile
+            </button>
+            <p className="text-xs text-gray-400">
+              {hasSelection ? 'Hex selected — pick a new tile below' : 'Click a painted hex to select it.'}
+            </p>
           </div>
         )}
 
         {/* Erase mode hint */}
         {tileToolMode === 'erase' && (
-          <div className="px-3 pt-2 flex-shrink-0">
-            <p className="text-xs text-red-500">Click a hex to erase its tile.</p>
+          <div className="px-3 py-2 flex-shrink-0">
+            <p className="text-xs text-red-500">Click or drag to erase tiles.</p>
           </div>
         )}
 
-        {/* Tile grid */}
-        <div className="flex-1 overflow-y-auto p-2">
-          <div
-            className="grid gap-2"
-            style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))` }}
-          >
-            {ORDERED_TILES.map(terrain => (
-              <button
-                key={terrain.id}
-                onClick={() => onSelectTile(terrain.id)}
-                className={`flex flex-col items-center p-2 rounded border-2 transition-all ${
-                  activeTileId === terrain.id && tileToolMode !== 'erase'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-300 hover:border-gray-400'
-                }`}
-              >
-                <TilePreview
-                  terrain={terrain}
-                  size={50}
-                  customColor={terrain.isCustom ? activeCustomColor : null}
-                />
-                <span className="text-xs mt-1 text-center leading-tight">
-                  {terrain.name}
-                </span>
-              </button>
-            ))}
+        {/* Tile grid — draw mode only */}
+        {tileToolMode === 'draw' && (
+          <div className="flex-1 overflow-y-auto p-2">
+            <div
+              className="grid gap-2"
+              style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))` }}
+            >
+              {ORDERED_TILES.map(terrain => (
+                <button
+                  key={terrain.id}
+                  onClick={() => onSelectTile(terrain.id)}
+                  className={`flex flex-col items-center p-2 rounded border-2 transition-all ${
+                    activeTileId === terrain.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  <TilePreview
+                    terrain={terrain}
+                    size={50}
+                    customColor={terrain.isCustom ? activeCustomColor : null}
+                  />
+                  <span className="text-xs mt-1 text-center leading-tight">
+                    {terrain.name}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Select mode: tile picker (change tile on selected hex) */}
+        {tileToolMode === 'select' && (
+          <div className="flex-1 overflow-y-auto p-2">
+            {hasSelection && (
+              <>
+                <div className="px-1 pb-2">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Custom tile color</label>
+                  <input
+                    type="color"
+                    value={activeCustomColor}
+                    onChange={e => onSetCustomTileColor(e.target.value)}
+                    className="w-full h-8 cursor-pointer rounded border border-gray-300"
+                  />
+                </div>
+                <div
+                  className="grid gap-2"
+                  style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))` }}
+                >
+                  {ORDERED_TILES.map(terrain => (
+                    <button
+                      key={terrain.id}
+                      onClick={() => onSelectTile(terrain.id)}
+                      className={`flex flex-col items-center p-2 rounded border-2 transition-all ${
+                        activeTileId === terrain.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <TilePreview
+                        terrain={terrain}
+                        size={50}
+                        customColor={terrain.isCustom ? activeCustomColor : null}
+                      />
+                      <span className="text-xs mt-1 text-center leading-tight">
+                        {terrain.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Erase mode: spacer */}
+        {tileToolMode === 'erase' && <div className="flex-1" />}
 
       </div>
     </div>
