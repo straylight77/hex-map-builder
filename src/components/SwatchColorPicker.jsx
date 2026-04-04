@@ -39,6 +39,7 @@ export const ROAD_SWATCHES = [
   { label: 'Dark Brown',    value: '#8B7355' },   // original default
   { label: 'Black',         value: '#222222' },
   { label: 'Light Grey',    value: '#aaaaaa' },
+  { label: 'Red',           value: '#bb2222' },
 ];
 
 export const RIVER_SWATCHES = [
@@ -49,11 +50,13 @@ export const RIVER_SWATCHES = [
 ];
 
 export const FEATURE_SWATCHES = [
-  { label: 'Black',     value: '#000000' },   // default
-  { label: 'White',     value: '#ffffff' },
-  { label: 'Red',       value: '#bb2222' },
-  { label: 'Dark Blue', value: '#1a3a7a' },
-  { label: 'Gold',      value: '#b89500' },
+  { label: 'Black',       value: '#000000' },   // default
+  { label: 'Red',         value: '#bb2222' },
+  { label: 'Green',       value: '#2e6930' },
+  { label: 'Blue',        value: '#507696' },
+  { label: 'Brown',       value: '#b09673' },
+  { label: 'Grey-Green',  value: '#6c7466' },
+  { label: 'Grey',        value: '#cccccc' },
 ];
 
 
