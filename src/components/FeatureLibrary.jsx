@@ -168,7 +168,7 @@ export function FeatureLibrary({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => onSetRotation(((displayRotation - 30) + 360) % 360)}
-                  className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50 text-sm font-bold flex-shrink-0"
+                  className="flex-1 text-xs py-1 rounded border capitalize transition-colors border-gray-300 text-gray-600 hover:border-gray-400"
                   title="Rotate left 30°"
                 >‹</button>
                 <span className="flex-1 text-center text-xs text-gray-700 font-medium tabular-nums">
@@ -176,7 +176,7 @@ export function FeatureLibrary({
                 </span>
                 <button
                   onClick={() => onSetRotation((displayRotation + 30) % 360)}
-                  className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50 text-sm font-bold flex-shrink-0"
+                  className="flex-1 text-xs py-1 rounded border capitalize transition-colors border-gray-300 text-gray-600 hover:border-gray-400"
                   title="Rotate right 30°"
                 >›</button>
               </div>
