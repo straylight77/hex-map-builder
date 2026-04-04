@@ -10,8 +10,8 @@
 const SCALE = 1.3;
 
 function drawFarmland(ctx, x, y) {
-  ctx.strokeStyle = '#8B6914';
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#8b7355';
+  ctx.lineWidth = 4;
 
   const quadrants = [
     { cx: x - 15 * SCALE, cy: y - 15 * SCALE, rotation: 0 },
@@ -232,7 +232,7 @@ export const TERRAIN_TILES = [
   {
     id: 'farmland',
     name: 'Farmland',
-    color: '#B4F157',
+    color: '#a9e156',
     drawPattern: drawFarmland,
   },
   {
@@ -298,7 +298,7 @@ export const TERRAIN_TILES = [
   {
     id: 'swamp',
     name: 'Swamp',
-    color: '#A8B5A0',
+    color: '#bad4ab',
     drawPattern: drawReeds,
   },
   // Special tile: custom color — color is stored per-hex in tile data, not here.

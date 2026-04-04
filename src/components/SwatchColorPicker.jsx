@@ -31,7 +31,7 @@ export const TILE_SWATCHES = [
   { label: 'Plains Green',  value: '#B4F157' },   // terrain.js: plains / farmland
   { label: 'Forest Green',  value: '#4CAF50' },   // terrain.js: forest
   { label: 'Hills Brown',   value: '#E8D4B8' },   // terrain.js: hills
-  { label: 'Swamp Grey',    value: '#A8B5A0' },   // terrain.js: swamp
+  { label: 'Swamp Grey',    value: '#bad4ab' },   // terrain.js: swamp
 ];
 
 export const ROAD_SWATCHES = [
