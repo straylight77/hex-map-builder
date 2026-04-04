@@ -31,12 +31,12 @@ export const TILE_SWATCHES = [
   { label: 'Plains Green',  value: '#B4F157' },   // terrain.js: plains / farmland
   { label: 'Forest Green',  value: '#4CAF50' },   // terrain.js: forest
   { label: 'Hills Brown',   value: '#E8D4B8' },   // terrain.js: hills
-  { label: 'Swamp Grey',    value: '#a8b5a0' },   // terrain.js: swamp
+  { label: 'Swamp Grey',    value: '#A8B5A0' },   // terrain.js: swamp
 ];
 
 export const ROAD_SWATCHES = [
   { label: 'Light Brown',   value: '#c4a882' },   // default
-  { label: 'Dark Brown',    value: '#8B7355' },
+  { label: 'Dark Brown',    value: '#8B7355' },   // original default
   { label: 'Black',         value: '#222222' },
   { label: 'Light Grey',    value: '#aaaaaa' },
 ];
@@ -45,8 +45,17 @@ export const RIVER_SWATCHES = [
   { label: 'Shallow Water', value: '#ADE1F9' },   // terrain.js: shallow-water
   { label: 'Water',         value: '#73A9D7' },   // terrain.js: water
   { label: 'Deep Water',    value: '#4A6B8C' },   // terrain.js: deep-water
-  { label: 'Lava Flow',     value: '#e15b5b' },
+  { label: 'Lava Flow',     value: '#e15b5b' }, 
 ];
+
+export const FEATURE_SWATCHES = [
+  { label: 'Black',     value: '#000000' },   // default
+  { label: 'White',     value: '#ffffff' },
+  { label: 'Red',       value: '#bb2222' },
+  { label: 'Dark Blue', value: '#1a3a7a' },
+  { label: 'Gold',      value: '#b89500' },
+];
+
 
 // ── Component ────────────────────────────────────────────────────────────────
 

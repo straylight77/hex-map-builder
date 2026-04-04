@@ -5,20 +5,10 @@ import {
   FEATURE_MAP,
   DEFAULT_FEATURE_COLOR,
 } from '../data/features.js';
-import { SwatchColorPicker } from './SwatchColorPicker.jsx';
+import { SwatchColorPicker, FEATURE_SWATCHES } from './SwatchColorPicker.jsx';
 
 const PANEL_WIDTH = 268;
 const GRID_COLUMNS = 2;
-
-// ── Feature color swatches ───────────────────────────────────────────────────
-// Edit FEATURE_SWATCHES in SwatchColorPicker.jsx to change these colors.
-const FEATURE_SWATCHES = [
-  { label: 'Black',     value: '#000000' },
-  { label: 'White',     value: '#ffffff' },
-  { label: 'Red',       value: '#bb2222' },
-  { label: 'Dark Blue', value: '#1a3a7a' },
-  { label: 'Gold',      value: '#b89500' },
-];
 
 const MODES = [
   { id: 'draw',   icon: <Pencil size={14} />,        label: 'Draw'   },
