@@ -1,5 +1,8 @@
 // ---------------------------------------------------------------------------
 // Map data schema
+// Note: default colors here must stay in sync with the first entry in each
+// swatch array in SwatchColorPicker.jsx (ROAD_SWATCHES, RIVER_SWATCHES,
+// TILE_SWATCHES). If you change a swatch order, update the color here too.
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_SPLINE = {
@@ -16,7 +19,7 @@ export const DEFAULT_MEANDER = {
 
 export const DEFAULT_ROAD_STYLE = {
   width: 4,
-  color: '#8B7355',
+  color: '#c4a882',   // matches ROAD_SWATCHES[0] in SwatchColorPicker.jsx
   dash: [],
   spline: { ...DEFAULT_SPLINE },
   // Roads do not meander
@@ -24,7 +27,7 @@ export const DEFAULT_ROAD_STYLE = {
 
 export const DEFAULT_RIVER_STYLE = {
   width: 5,
-  color: '#5B9BD5',
+  color: '#ADE1F9',   // matches RIVER_SWATCHES[0] (shallow water) in SwatchColorPicker.jsx
   dash: [],
   spline: { ...DEFAULT_SPLINE, tension: 0.6 },
   meander: { ...DEFAULT_MEANDER },

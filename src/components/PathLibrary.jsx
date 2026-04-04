@@ -1,4 +1,5 @@
 import { Pencil, MousePointer2, Eraser } from 'lucide-react';
+import { SwatchColorPicker, ROAD_SWATCHES, RIVER_SWATCHES } from './SwatchColorPicker.jsx';
 
 const PANEL_WIDTH = 268;
 
@@ -41,6 +42,9 @@ export function PathLibrary({
   const meander = editStyle?.meander;
   const showMeanderControls = isRiver && (pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection));
 
+  // Use river or road swatches depending on tool type
+  const swatches = isRiver ? RIVER_SWATCHES : ROAD_SWATCHES;
+
   return (
     <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
       <div className="bg-white border-l border-gray-300 h-full flex flex-col">
@@ -50,7 +54,7 @@ export function PathLibrary({
           <span className="text-sm font-semibold text-gray-700">{toolLabel}s</span>
         </div>
 
-        {/* Draw / Select / Erase — unified mode row */}
+        {/* Draw / Select / Erase */}
         <div className="px-3 py-2 border-b border-gray-200 flex gap-1.5 flex-shrink-0">
           {MODES.map(({ id, icon, label }) => {
             const isActive = pathToolMode === id;
@@ -77,7 +81,7 @@ export function PathLibrary({
           })}
         </div>
 
-        {/* Delete selected — only in select mode, right below mode row */}
+        {/* Delete selected — only in select mode */}
         {pathToolMode === 'select' && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
             <button
@@ -118,16 +122,12 @@ export function PathLibrary({
           {/* Style controls */}
           {editStyle && (pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection)) && (
             <>
-              {/* Color */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Color</label>
-                <input
-                  type="color"
-                  value={editStyle.color}
-                  onChange={e => editUpdater({ color: e.target.value })}
-                  className="w-full h-8 cursor-pointer rounded border border-gray-300"
-                />
-              </div>
+              {/* Color — SwatchColorPicker */}
+              <SwatchColorPicker
+                swatches={swatches}
+                value={editStyle.color}
+                onChange={color => editUpdater({ color })}
+              />
 
               {/* Width */}
               <div>

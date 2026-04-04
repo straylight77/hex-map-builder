@@ -5,11 +5,14 @@ import {
   FEATURE_MAP,
   DEFAULT_FEATURE_COLOR,
 } from '../data/features.js';
+import { SwatchColorPicker } from './SwatchColorPicker.jsx';
 
 const PANEL_WIDTH = 268;
 const GRID_COLUMNS = 2;
 
-const COLOR_PRESETS = [
+// ── Feature color swatches ───────────────────────────────────────────────────
+// Edit FEATURE_SWATCHES in SwatchColorPicker.jsx to change these colors.
+const FEATURE_SWATCHES = [
   { label: 'Black',     value: '#000000' },
   { label: 'White',     value: '#ffffff' },
   { label: 'Red',       value: '#bb2222' },
@@ -82,7 +85,7 @@ export function FeatureLibrary({
           <span className="text-sm font-semibold text-gray-700">Features</span>
         </div>
 
-        {/* Draw / Select / Erase — unified mode row */}
+        {/* Draw / Select / Erase */}
         <div className="px-3 py-2 border-b border-gray-200 flex gap-1.5 flex-shrink-0">
           {MODES.map(({ id, icon, label }) => {
             const isActive = featureToolMode === id;
@@ -109,7 +112,7 @@ export function FeatureLibrary({
           })}
         </div>
 
-        {/* Delete selected — only in select mode, right below mode row */}
+        {/* Delete selected — only in select mode */}
         {featureToolMode === 'select' && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
             <button
@@ -133,11 +136,10 @@ export function FeatureLibrary({
           </div>
         )}
 
-        {/* Style controls — visible in draw mode and select mode */}
+        {/* Style controls */}
         {(featureToolMode === 'draw' || featureToolMode === 'select') && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 space-y-3">
 
-            {/* Select mode status */}
             {featureToolMode === 'select' && !hasSelection && (
               <p className="text-xs text-gray-400">Click a hex with a feature to select it.</p>
             )}
@@ -147,33 +149,12 @@ export function FeatureLibrary({
               </p>
             )}
 
-            {/* Color */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Color</label>
-              <div className="flex gap-1 flex-wrap">
-                {COLOR_PRESETS.map(({ label, value }) => (
-                  <button
-                    key={value}
-                    title={label}
-                    onClick={() => onSetColor(value)}
-                    className={`w-6 h-6 rounded-full border-2 transition-all ${
-                      displayColor === value ? 'border-blue-500 scale-110' : 'border-gray-300'
-                    }`}
-                    style={{
-                      backgroundColor: value,
-                      boxShadow: value === '#ffffff' ? 'inset 0 0 0 1px #ccc' : undefined,
-                    }}
-                  />
-                ))}
-                <input
-                  type="color"
-                  value={displayColor}
-                  onChange={e => onSetColor(e.target.value)}
-                  title="Custom color"
-                  className="w-6 h-6 rounded cursor-pointer border border-gray-300"
-                />
-              </div>
-            </div>
+            {/* Color — SwatchColorPicker */}
+            <SwatchColorPicker
+              swatches={FEATURE_SWATCHES}
+              value={displayColor}
+              onChange={onSetColor}
+            />
 
             {/* Size */}
             <div>
@@ -213,7 +194,7 @@ export function FeatureLibrary({
           </div>
         )}
 
-        {/* Feature gallery — only in draw mode */}
+        {/* Feature gallery — draw mode only */}
         {featureToolMode === 'draw' && (
           <div className="flex-1 overflow-y-auto p-2">
             {FEATURES_BY_CATEGORY.map(({ category, features }) => (
@@ -248,7 +229,6 @@ export function FeatureLibrary({
           </div>
         )}
 
-        {/* Select / Erase mode: spacer */}
         {(featureToolMode === 'select' || featureToolMode === 'erase') && <div className="flex-1" />}
 
       </div>

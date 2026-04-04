@@ -1,6 +1,7 @@
 import { Pencil, MousePointer2, Eraser } from 'lucide-react';
 import { TERRAIN_TILES } from '../data/terrain.js';
 import { TilePreview } from './TilePreview.jsx';
+import { SwatchColorPicker, TILE_SWATCHES } from './SwatchColorPicker.jsx';
 
 export const PANEL_WIDTH = 268;
 const GRID_COLUMNS = 2;
@@ -49,7 +50,7 @@ export function TileLibrary({
           <span className="text-sm font-semibold text-gray-700">Tiles</span>
         </div>
 
-        {/* Draw / Select / Erase — unified mode row */}
+        {/* Draw / Select / Erase */}
         <div className="px-3 py-2 border-b border-gray-200 flex gap-1.5 flex-shrink-0">
           {MODES.map(({ id, icon, label }) => {
             const isActive = tileToolMode === id;
@@ -76,15 +77,14 @@ export function TileLibrary({
           })}
         </div>
 
-        {/* Custom color — only in draw mode */}
+        {/* Custom color — draw mode */}
         {tileToolMode === 'draw' && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
-            <label className="block text-xs font-medium text-gray-600 mb-1">Custom tile color</label>
-            <input
-              type="color"
+            <SwatchColorPicker
+              swatches={TILE_SWATCHES}
               value={activeCustomColor}
-              onChange={e => onSetCustomTileColor(e.target.value)}
-              className="w-full h-8 cursor-pointer rounded border border-gray-300"
+              onChange={color => { onSetCustomTileColor(color); onSelectTile('custom'); }}
+              label="Custom tile color"
             />
           </div>
         )}
@@ -116,7 +116,7 @@ export function TileLibrary({
           </div>
         )}
 
-        {/* Tile grid — draw mode only */}
+        {/* Tile grid — draw mode */}
         {tileToolMode === 'draw' && (
           <div className="flex-1 overflow-y-auto p-2">
             <div
@@ -147,18 +147,17 @@ export function TileLibrary({
           </div>
         )}
 
-        {/* Select mode: tile picker (change tile on selected hex) */}
+        {/* Select mode: tile picker */}
         {tileToolMode === 'select' && (
           <div className="flex-1 overflow-y-auto p-2">
             {hasSelection && (
               <>
                 <div className="px-1 pb-2">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Custom tile color</label>
-                  <input
-                    type="color"
+                  <SwatchColorPicker
+                    swatches={TILE_SWATCHES}
                     value={activeCustomColor}
-                    onChange={e => onSetCustomTileColor(e.target.value)}
-                    className="w-full h-8 cursor-pointer rounded border border-gray-300"
+                    onChange={color => { onSetCustomTileColor(color); onSelectTile('custom'); }}
+                    label="Custom tile color"
                   />
                 </div>
                 <div

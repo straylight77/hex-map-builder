@@ -27,6 +27,7 @@ DEST = {
     "PathLibrary.jsx": "src/components",
     "FeatureLibrary.jsx": "src/components",
     "UI.jsx": "src/components",
+    "SwatchColorPicker.jsx": "src/components",
 
     "useViewport.js": "src/hooks",
     "useTools.js": "src/hooks",
