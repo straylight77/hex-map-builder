@@ -60,9 +60,13 @@ export function useTools() {
 
   // ── Tile tool actions ─────────────────────────────────────────────────────
 
+  /**
+   * selectTile only updates which tile type is active in the library.
+   * It does NOT change the tool mode — callers are responsible for that
+   * if needed (e.g. switching to draw mode when clicking in draw mode).
+   */
   const selectTile = useCallback((tileId) => {
     setSelectedTile(tileId);
-    setTileToolModeState('draw');
   }, []);
 
   // Legacy compat
