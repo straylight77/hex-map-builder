@@ -15,6 +15,22 @@ const MODES = [
   { id: 'erase',  icon: <Eraser size={14} />,         label: 'Erase'  },
 ];
 
+function modeHint(toolLabel, pathToolMode, isDrawingPath, activePath, hasSelection) {
+  const tool = toolLabel.toLowerCase();
+  if (pathToolMode === 'draw') {
+    return isDrawingPath
+      ? `${activePath?.length ?? 0} point${activePath?.length !== 1 ? 's' : ''} — click to extend`
+      : `Click a cell to start drawing a ${tool}.`;
+  }
+  if (pathToolMode === 'select') {
+    return hasSelection ? `${toolLabel} selected — edit below.` : `Click a ${tool} to select it.`;
+  }
+  if (pathToolMode === 'erase') {
+    return `Click a ${tool} to erase it.`;
+  }
+  return null;
+}
+
 export function PathLibrary({
   toolLabel,
   isRiver,
@@ -42,8 +58,9 @@ export function PathLibrary({
   const meander = editStyle?.meander;
   const showMeanderControls = isRiver && (pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection));
 
-  // Use river or road swatches depending on tool type
   const swatches = isRiver ? RIVER_SWATCHES : ROAD_SWATCHES;
+
+  const hint = modeHint(toolLabel, pathToolMode, isDrawingPath, activePath, hasSelection);
 
   return (
     <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
@@ -55,7 +72,7 @@ export function PathLibrary({
         </div>
 
         {/* Draw / Select / Erase */}
-        <div className="px-3 py-2 border-b border-gray-200 flex gap-1.5 flex-shrink-0">
+        <div className="px-3 pt-2 flex gap-1.5 flex-shrink-0">
           {MODES.map(({ id, icon, label }) => {
             const isActive = pathToolMode === id;
             const isEraseBtn = id === 'erase';
@@ -81,6 +98,15 @@ export function PathLibrary({
           })}
         </div>
 
+        {/* One-liner hint */}
+        {hint && (
+          <p className={`px-3 pt-1.5 pb-2 text-xs border-b border-gray-200 ${
+            pathToolMode === 'erase' ? 'text-red-500' : 'text-gray-500'
+          }`}>
+            {hint}
+          </p>
+        )}
+
         {/* Delete selected — only in select mode */}
         {pathToolMode === 'select' && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
@@ -101,28 +127,10 @@ export function PathLibrary({
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
 
-          {pathToolMode === 'erase' && (
-            <p className="text-xs text-red-500 text-center pt-1">
-              Hover over a {toolLabel.toLowerCase()} and click to erase it.
-            </p>
-          )}
-
-          {pathToolMode === 'select' && !hasSelection && (
-            <p className="text-xs text-gray-500 text-center pt-2">
-              Hover over a {toolLabel.toLowerCase()} and click to select it.
-            </p>
-          )}
-
-          {pathToolMode === 'select' && hasSelection && (
-            <p className="text-xs text-blue-600 font-medium">
-              {toolLabel} selected — edit below
-            </p>
-          )}
-
           {/* Style controls */}
           {editStyle && (pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection)) && (
             <>
-              {/* Color — SwatchColorPicker */}
+              {/* Color */}
               <SwatchColorPicker
                 swatches={swatches}
                 value={editStyle.color}
@@ -165,43 +173,45 @@ export function PathLibrary({
                 </div>
               </div>
 
-              {/* Spline */}
+              {/* Path Smoothing */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Path smoothing</label>
-                <button
-                  onClick={() => editUpdater({ spline: { enabled: !editStyle.spline?.enabled } })}
-                  className={`w-full text-xs px-2 py-1 rounded border ${
-                    editStyle.spline?.enabled
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-300 text-gray-500 hover:border-gray-400'
-                  }`}
-                >
-                  {editStyle.spline?.enabled ? '✓ Smooth curve' : 'Straight lines'}
-                </button>
-              </div>
-
-              {editStyle.spline?.enabled && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Tension: {(editStyle.spline.tension ?? 0.5).toFixed(2)}
-                  </label>
-                  <input
-                    type="range" min="0" max="1" step="0.05"
-                    value={editStyle.spline.tension ?? 0.5}
-                    onChange={e => editUpdater({ spline: { tension: parseFloat(e.target.value) } })}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                    <span>Gentle</span><span>Sharp</span>
-                  </div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-semibold text-gray-700">Path Smoothing</label>
+                  <button
+                    onClick={() => editUpdater({ spline: { enabled: !editStyle.spline?.enabled } })}
+                    className={`text-xs px-2 py-1 rounded border ${
+                      editStyle.spline?.enabled
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-300 text-gray-500 hover:border-gray-400'
+                    }`}
+                  >
+                    {editStyle.spline?.enabled ? '✓ On' : 'Off'}
+                  </button>
                 </div>
-              )}
+
+                {editStyle.spline?.enabled && (
+                  <div className="mt-2">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Tension: {(editStyle.spline.tension ?? 0.5).toFixed(2)}
+                    </label>
+                    <input
+                      type="range" min="0" max="1" step="0.05"
+                      value={editStyle.spline.tension ?? 0.5}
+                      onChange={e => editUpdater({ spline: { tension: parseFloat(e.target.value) } })}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                      <span>Sharp</span><span>Gentle</span>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Meander (river only) */}
               {showMeanderControls && (
                 <div className="border-t border-gray-200 pt-3 space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-gray-600">Meander</label>
+                    <label className="text-sm font-semibold text-gray-700">Meander</label>
                     <button
                       onClick={() => editUpdater({ meander: { enabled: !meander?.enabled } })}
                       className={`text-xs px-2 py-1 rounded border ${
@@ -267,35 +277,26 @@ export function PathLibrary({
             </>
           )}
 
-          {/* Draw mode: path progress */}
-          {pathToolMode === 'draw' && (
+          {/* Draw mode: commit/cancel buttons */}
+          {pathToolMode === 'draw' && isDrawingPath && (
             <div className="border-t border-gray-200 pt-3 space-y-2">
-              <p className="text-xs text-gray-500">
-                {isDrawingPath
-                  ? `${activePath?.length ?? 0} point${activePath?.length !== 1 ? 's' : ''} — click to extend`
-                  : 'Click a cell to start drawing'}
-              </p>
-              {isDrawingPath && (
-                <>
-                  <button
-                    onClick={onCommit}
-                    disabled={!canCommit}
-                    className={`w-full text-xs px-3 py-1.5 rounded ${
-                      canCommit
-                        ? 'bg-blue-500 text-white hover:bg-blue-600'
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    Finish path (Enter)
-                  </button>
-                  <button
-                    onClick={onCancel}
-                    className="w-full text-xs px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
-                  >
-                    Cancel (Esc)
-                  </button>
-                </>
-              )}
+              <button
+                onClick={onCommit}
+                disabled={!canCommit}
+                className={`w-full text-xs px-3 py-1.5 rounded ${
+                  canCommit
+                    ? 'bg-blue-500 text-white hover:bg-blue-600'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                Finish path (Enter)
+              </button>
+              <button
+                onClick={onCancel}
+                className="w-full text-xs px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
+              >
+                Cancel (Esc)
+              </button>
             </div>
           )}
 

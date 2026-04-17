@@ -16,6 +16,13 @@ const MODES = [
   { id: 'erase',  icon: <Eraser size={14} />,         label: 'Erase'  },
 ];
 
+function modeHint(tileToolMode, hasSelection) {
+  if (tileToolMode === 'draw')   return 'Click or drag to paint tiles.';
+  if (tileToolMode === 'erase')  return 'Click or drag to erase tiles.';
+  if (tileToolMode === 'select') return hasSelection ? 'Hex selected — pick a new tile below.' : 'Click a painted hex to select it.';
+  return null;
+}
+
 export function TileLibrary({
   tileToolMode,
   onSetTileMode,
@@ -41,6 +48,8 @@ export function TileLibrary({
       ? (selectedHexCustomColor ?? customTileColor)
       : customTileColor;
 
+  const hint = modeHint(tileToolMode, hasSelection);
+
   return (
     <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
       <div className="bg-white border-l border-gray-300 h-full flex flex-col">
@@ -51,7 +60,7 @@ export function TileLibrary({
         </div>
 
         {/* Draw / Select / Erase */}
-        <div className="px-3 py-2 border-b border-gray-200 flex gap-1.5 flex-shrink-0">
+        <div className="px-3 pt-2 flex gap-1.5 flex-shrink-0">
           {MODES.map(({ id, icon, label }) => {
             const isActive = tileToolMode === id;
             const isEraseBtn = id === 'erase';
@@ -77,6 +86,15 @@ export function TileLibrary({
           })}
         </div>
 
+        {/* One-liner hint */}
+        {hint && (
+          <p className={`px-3 pt-1.5 pb-2 text-xs border-b border-gray-200 ${
+            tileToolMode === 'erase' ? 'text-red-500' : 'text-gray-500'
+          }`}>
+            {hint}
+          </p>
+        )}
+
         {/* Custom color — draw mode */}
         {tileToolMode === 'draw' && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
@@ -89,7 +107,7 @@ export function TileLibrary({
           </div>
         )}
 
-        {/* Select mode: delete button + hint */}
+        {/* Select mode: delete button */}
         {tileToolMode === 'select' && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 space-y-2">
             <button
@@ -103,16 +121,6 @@ export function TileLibrary({
             >
               Delete Tile
             </button>
-            <p className="text-xs text-gray-400">
-              {hasSelection ? 'Hex selected — pick a new tile below' : 'Click a painted hex to select it.'}
-            </p>
-          </div>
-        )}
-
-        {/* Erase mode hint */}
-        {tileToolMode === 'erase' && (
-          <div className="px-3 py-2 flex-shrink-0">
-            <p className="text-xs text-red-500">Click or drag to erase tiles.</p>
           </div>
         )}
 

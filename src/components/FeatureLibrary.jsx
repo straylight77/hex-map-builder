@@ -16,6 +16,13 @@ const MODES = [
   { id: 'erase',  icon: <Eraser size={14} />,         label: 'Erase'  },
 ];
 
+function modeHint(featureToolMode, hasSelection) {
+  if (featureToolMode === 'draw')   return 'Click a hex to place a feature.';
+  if (featureToolMode === 'erase')  return 'Click a hex to erase its feature.';
+  if (featureToolMode === 'select') return hasSelection ? 'Feature selected — edit below.' : 'Click a hex with a feature to select it.';
+  return null;
+}
+
 function FeaturePreview({ feature, color }) {
   const canvasRef = useRef(null);
   const px = 52;
@@ -66,6 +73,8 @@ export function FeatureLibrary({
   const displayFeatureId = featureToolMode === 'select' && hasSelection ? selectedFeatureData.id : selectedFeatureId;
   const displayFeature   = FEATURE_MAP[displayFeatureId];
 
+  const hint = modeHint(featureToolMode, hasSelection);
+
   return (
     <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
       <div className="bg-white border-l border-gray-300 h-full flex flex-col">
@@ -76,7 +85,7 @@ export function FeatureLibrary({
         </div>
 
         {/* Draw / Select / Erase */}
-        <div className="px-3 py-2 border-b border-gray-200 flex gap-1.5 flex-shrink-0">
+        <div className="px-3 pt-2 flex gap-1.5 flex-shrink-0">
           {MODES.map(({ id, icon, label }) => {
             const isActive = featureToolMode === id;
             const isEraseBtn = id === 'erase';
@@ -102,6 +111,15 @@ export function FeatureLibrary({
           })}
         </div>
 
+        {/* One-liner hint */}
+        {hint && (
+          <p className={`px-3 pt-1.5 pb-2 text-xs border-b border-gray-200 ${
+            featureToolMode === 'erase' ? 'text-red-500' : 'text-gray-500'
+          }`}>
+            {hint}
+          </p>
+        )}
+
         {/* Delete selected — only in select mode */}
         {featureToolMode === 'select' && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
@@ -119,27 +137,17 @@ export function FeatureLibrary({
           </div>
         )}
 
-        {/* Erase mode hint */}
-        {featureToolMode === 'erase' && (
-          <div className="px-3 pt-2 flex-shrink-0">
-            <p className="text-xs text-red-500">Click a hex to erase its feature.</p>
-          </div>
-        )}
-
         {/* Style controls */}
         {(featureToolMode === 'draw' || featureToolMode === 'select') && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 space-y-3">
 
-            {featureToolMode === 'select' && !hasSelection && (
-              <p className="text-xs text-gray-400">Click a hex with a feature to select it.</p>
-            )}
             {featureToolMode === 'select' && hasSelection && (
               <p className="text-xs text-blue-600 font-medium">
                 {displayFeature?.name ?? 'Feature'} selected
               </p>
             )}
 
-            {/* Color — SwatchColorPicker */}
+            {/* Color */}
             <SwatchColorPicker
               swatches={FEATURE_SWATCHES}
               value={displayColor}
