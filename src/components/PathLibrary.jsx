@@ -153,14 +153,14 @@ export function PathLibrary({
               {/* Dash */}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Line style</label>
-                <div className="flex flex-col gap-1">
+                <div className="flex gap-1">
                   {DASH_OPTIONS.map(({ label, dash }) => {
                     const active = JSON.stringify(editStyle.dash) === JSON.stringify(dash);
                     return (
                       <button
                         key={label}
                         onClick={() => editUpdater({ dash })}
-                        className={`text-xs px-2 py-1 rounded border text-left ${
+                        className={`flex-1 text-xs px-2 py-1 rounded border text-center ${
                           active
                             ? 'border-blue-500 bg-blue-50 text-blue-700'
                             : 'border-gray-300 hover:border-gray-400'
