@@ -179,7 +179,7 @@ function strokePath(ctx, pixels, spline, tension, width, color, dash, cap = 'squ
   ctx.lineWidth = width;
   ctx.lineCap = cap;
   ctx.lineJoin = 'round';
-  ctx.setLineDash(dash ?? []);
+  ctx.setLineDash(Array.isArray(dash) ? dash : []);
 
   ctx.beginPath();
   if (spline?.enabled && pixels.length > 2) {
