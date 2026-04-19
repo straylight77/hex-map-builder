@@ -322,7 +322,16 @@ export default function App() {
     handleCommitPath();
   }, [isPathTool, path, handleCommitPath]);
 
-  const handleWheel = useCallback((e) => viewport.handleWheel(e), [viewport]);
+  // Attach wheel listener as non-passive so preventDefault works on all browsers.
+  // React's synthetic onWheel is passive by default, which blocks preventDefault
+  // and allows trackpad scroll to move the page behind the canvas.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onWheel = (e) => viewport.handleWheel(e);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
+  }, [viewport.handleWheel]);
 
   // ── Map ops ────────────────────────────────────────────────────────────────
 
@@ -400,7 +409,6 @@ export default function App() {
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseLeave}
               onDoubleClick={handleDoubleClick}
-              onWheel={handleWheel}
               onContextMenu={handleContextMenu}
             />
           </div>

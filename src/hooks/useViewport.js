@@ -51,8 +51,9 @@ export function useViewport(initialViewport = DEFAULT_VIEWPORT) {
   const endDrag = useCallback(() => setIsDragging(false), []);
 
   const handleWheel = useCallback((e) => {
+    // Always prevent default so trackpad scroll doesn't move the page
+    e.preventDefault();
     if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
       const factor = e.deltaY > 0 ? 0.9 : 1.1;
       setViewport(prev => ({ ...prev, scale: clampScale(prev.scale * factor) }));
     } else {
