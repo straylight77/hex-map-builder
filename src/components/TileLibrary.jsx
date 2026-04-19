@@ -1,10 +1,10 @@
-import { Pencil, MousePointer2, Eraser } from 'lucide-react';
+import { useState } from 'react';
+import { Pencil, MousePointer2, Eraser, LayoutList, LayoutGrid } from 'lucide-react';
 import { ORDERED_TILES } from '../data/terrain.js';
 import { TilePreview } from './TilePreview.jsx';
 import { SwatchColorPicker, TILE_SWATCHES } from './SwatchColorPicker.jsx';
 
 export const PANEL_WIDTH = 268;
-const GRID_COLUMNS = 2;
 
 const MODES = [
   { id: 'draw',   icon: <Pencil size={14} />,        label: 'Draw'   },
@@ -21,6 +21,50 @@ function modeHint(tileToolMode, hasSelection) {
   return null;
 }
 
+function TileItem({ terrain, isActive, customColor, onClick, view }) {
+  const previewSize = view === 'list' ? 18 : 36;
+
+  if (view === 'list') {
+    return (
+      <button
+        onClick={onClick}
+        className={`w-full flex items-center gap-2 px-2 py-1 rounded border transition-all text-left ${
+          isActive
+            ? 'border-blue-500 bg-blue-50'
+            : 'border-transparent hover:border-gray-300 hover:bg-gray-50'
+        }`}
+      >
+        <div className="flex-shrink-0">
+          <TilePreview
+            terrain={terrain}
+            size={previewSize}
+            customColor={terrain.isCustom ? customColor : null}
+          />
+        </div>
+        <span className="text-xs text-gray-700 leading-tight">{terrain.name}</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center p-2 rounded border-2 transition-all ${
+        isActive
+          ? 'border-blue-500 bg-blue-50'
+          : 'border-gray-300 hover:border-gray-400'
+      }`}
+    >
+      <TilePreview
+        terrain={terrain}
+        size={previewSize}
+        customColor={terrain.isCustom ? customColor : null}
+      />
+      <span className="text-xs mt-1 text-center leading-tight">{terrain.name}</span>
+    </button>
+  );
+}
+
 export function TileLibrary({
   tileToolMode,
   onSetTileMode,
@@ -33,6 +77,8 @@ export function TileLibrary({
   selectedHexCustomColor,
   onDeleteSelected,
 }) {
+  const [view, setView] = useState('list');
+
   const hasSelection = !!selectedHex && !!selectedHexTileId;
 
   const activeTileId = (tileToolMode === 'select' && hasSelection)
@@ -45,6 +91,7 @@ export function TileLibrary({
       : customTileColor;
 
   const hint = modeHint(tileToolMode, hasSelection);
+  const showPicker = tileToolMode === 'draw' || (tileToolMode === 'select' && hasSelection);
 
   return (
     <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
@@ -91,8 +138,8 @@ export function TileLibrary({
           </p>
         )}
 
-        {/* Custom color — draw mode */}
-        {tileToolMode === 'draw' && (
+        {/* Custom color */}
+        {showPicker && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
             <SwatchColorPicker
               swatches={TILE_SWATCHES}
@@ -105,7 +152,7 @@ export function TileLibrary({
 
         {/* Select mode: delete button */}
         {tileToolMode === 'select' && (
-          <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 space-y-2">
+          <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
             <button
               onClick={onDeleteSelected}
               disabled={!hasSelection}
@@ -120,78 +167,70 @@ export function TileLibrary({
           </div>
         )}
 
-        {/* Tile grid — draw mode */}
-        {tileToolMode === 'draw' && (
-          <div className="flex-1 overflow-y-auto p-2">
-            <div
-              className="grid gap-2"
-              style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))` }}
-            >
-              {ORDERED_TILES.map(terrain => (
+        {/* View toggle + tile picker */}
+        {showPicker && (
+          <>
+            {/* View toggle bar — sits directly above the list/grid */}
+            <div className="px-3 py-1.5 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+              <span className="text-xs font-medium text-gray-500">Tiles</span>
+              <div className="flex gap-0.5">
                 <button
-                  key={terrain.id}
-                  onClick={() => onSelectTile(terrain.id)}
-                  className={`flex flex-col items-center p-2 rounded border-2 transition-all ${
-                    activeTileId === terrain.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-300 hover:border-gray-400'
+                  onClick={() => setView('list')}
+                  title="List view"
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors ${
+                    view === 'list'
+                      ? 'bg-blue-100 text-blue-600 font-medium'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  <TilePreview
-                    terrain={terrain}
-                    size={50}
-                    customColor={terrain.isCustom ? activeCustomColor : null}
-                  />
-                  <span className="text-xs mt-1 text-center leading-tight">
-                    {terrain.name}
-                  </span>
+                  <LayoutList size={13} />
+                  <span>List</span>
                 </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Select mode: tile picker */}
-        {tileToolMode === 'select' && (
-          <div className="flex-1 overflow-y-auto p-2">
-            {hasSelection && (
-              <>
-                <div className="px-1 pb-2">
-                  <SwatchColorPicker
-                    swatches={TILE_SWATCHES}
-                    value={activeCustomColor}
-                    onChange={color => { onSetCustomTileColor(color); onSelectTile('custom'); }}
-                    label="Custom tile color"
-                  />
-                </div>
-                <div
-                  className="grid gap-2"
-                  style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))` }}
+                <button
+                  onClick={() => setView('card')}
+                  title="Card view"
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors ${
+                    view === 'card'
+                      ? 'bg-blue-100 text-blue-600 font-medium'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                  }`}
                 >
+                  <LayoutGrid size={13} />
+                  <span>Grid</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {view === 'list' ? (
+                <div className="p-2 space-y-0.5">
                   {ORDERED_TILES.map(terrain => (
-                    <button
+                    <TileItem
                       key={terrain.id}
+                      terrain={terrain}
+                      isActive={activeTileId === terrain.id}
+                      customColor={activeCustomColor}
                       onClick={() => onSelectTile(terrain.id)}
-                      className={`flex flex-col items-center p-2 rounded border-2 transition-all ${
-                        activeTileId === terrain.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      <TilePreview
-                        terrain={terrain}
-                        size={50}
-                        customColor={terrain.isCustom ? activeCustomColor : null}
-                      />
-                      <span className="text-xs mt-1 text-center leading-tight">
-                        {terrain.name}
-                      </span>
-                    </button>
+                      view="list"
+                    />
                   ))}
                 </div>
-              </>
-            )}
-          </div>
+              ) : (
+                <div className="p-2 grid grid-cols-2 gap-2">
+                  {ORDERED_TILES.map(terrain => (
+                    <TileItem
+                      key={terrain.id}
+                      terrain={terrain}
+                      isActive={activeTileId === terrain.id}
+                      customColor={activeCustomColor}
+                      onClick={() => onSelectTile(terrain.id)}
+                      view="card"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {tileToolMode === 'erase' && <div className="flex-1" />}

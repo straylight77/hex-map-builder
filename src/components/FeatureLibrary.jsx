@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { Pencil, MousePointer2, Eraser } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Pencil, MousePointer2, Eraser, LayoutList, LayoutGrid } from 'lucide-react';
 import {
   FEATURES_BY_CATEGORY,
   FEATURE_MAP,
@@ -8,7 +8,6 @@ import {
 import { SwatchColorPicker, FEATURE_SWATCHES } from './SwatchColorPicker.jsx';
 
 const PANEL_WIDTH = 268;
-const GRID_COLUMNS = 2;
 
 const MODES = [
   { id: 'draw',   icon: <Pencil size={14} />,        label: 'Draw'   },
@@ -25,9 +24,8 @@ function modeHint(featureToolMode, hasSelection) {
   return null;
 }
 
-function FeaturePreview({ feature, color }) {
+function FeaturePreview({ feature, color, px }) {
   const canvasRef = useRef(null);
-  const px = 52;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -40,13 +38,52 @@ function FeaturePreview({ feature, color }) {
     ctx.save();
     ctx.scale(dpr, dpr);
     ctx.translate(px / 2, px / 2);
-    ctx.scale(0.72, 0.72);
+    const scale = (px / 52) * 0.72;
+    ctx.scale(scale, scale);
     feature.draw(ctx, color || DEFAULT_FEATURE_COLOR);
     ctx.restore();
-  }, [feature, color]);
+  }, [feature, color, px]);
 
   return (
-    <canvas ref={canvasRef} style={{ width: px, height: px }} className="block" />
+    <canvas ref={canvasRef} style={{ width: px, height: px }} className="block flex-shrink-0" />
+  );
+}
+
+function FeatureItem({ feature, isActive, color, onClick, view }) {
+  const px = view === 'list' ? 28 : 44;
+
+  if (view === 'list') {
+    return (
+      <button
+        onClick={onClick}
+        title={feature.name}
+        className={`w-full flex items-center gap-2 px-2 py-1 rounded border transition-all text-left ${
+          isActive
+            ? 'border-blue-500 bg-blue-50'
+            : 'border-transparent hover:border-gray-300 hover:bg-gray-50'
+        }`}
+      >
+        <FeaturePreview feature={feature} color={color} px={px} />
+        <span className="text-xs text-gray-700 leading-tight">{feature.name}</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      title={feature.name}
+      className={`flex flex-col items-center p-1 rounded border-2 transition-all ${
+        isActive
+          ? 'border-blue-500 bg-blue-50'
+          : 'border-gray-200 hover:border-gray-400'
+      }`}
+    >
+      <FeaturePreview feature={feature} color={color} px={px} />
+      <span className="text-xs mt-0.5 text-center leading-tight text-gray-600">
+        {feature.name}
+      </span>
+    </button>
   );
 }
 
@@ -65,6 +102,8 @@ export function FeatureLibrary({
   featureRotation,
   onSetRotation,
 }) {
+  const [view, setView] = useState('list');
+
   const hasSelection = !!selectedFeatureHex && !!selectedFeatureData;
 
   const displayColor     = featureToolMode === 'select' && hasSelection ? selectedFeatureData.color    : featureColor;
@@ -74,6 +113,8 @@ export function FeatureLibrary({
   const displayFeature   = FEATURE_MAP[displayFeatureId];
 
   const hint = modeHint(featureToolMode, hasSelection);
+  const showStyleControls = featureToolMode === 'draw' || featureToolMode === 'select';
+  const showGallery       = featureToolMode === 'draw' || featureToolMode === 'select';
 
   return (
     <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
@@ -138,7 +179,7 @@ export function FeatureLibrary({
         )}
 
         {/* Style controls */}
-        {(featureToolMode === 'draw' || featureToolMode === 'select') && (
+        {showStyleControls && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 space-y-3">
 
             {featureToolMode === 'select' && hasSelection && (
@@ -147,14 +188,12 @@ export function FeatureLibrary({
               </p>
             )}
 
-            {/* Color */}
             <SwatchColorPicker
               swatches={FEATURE_SWATCHES}
               value={displayColor}
               onChange={onSetColor}
             />
 
-            {/* Size */}
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Size</label>
               <div className="flex gap-1">
@@ -170,13 +209,12 @@ export function FeatureLibrary({
               </div>
             </div>
 
-            {/* Rotation */}
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Rotation</label>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => onSetRotation(((displayRotation - 30) + 360) % 360)}
-                  className="flex-1 text-xs py-1 rounded border capitalize transition-colors border-gray-300 text-gray-600 hover:border-gray-400"
+                  className="flex-1 text-xs py-1 rounded border transition-colors border-gray-300 text-gray-600 hover:border-gray-400"
                   title="Rotate left 30°"
                 >‹</button>
                 <span className="flex-1 text-center text-xs text-gray-700 font-medium tabular-nums">
@@ -184,7 +222,7 @@ export function FeatureLibrary({
                 </span>
                 <button
                   onClick={() => onSetRotation((displayRotation + 30) % 360)}
-                  className="flex-1 text-xs py-1 rounded border capitalize transition-colors border-gray-300 text-gray-600 hover:border-gray-400"
+                  className="flex-1 text-xs py-1 rounded border transition-colors border-gray-300 text-gray-600 hover:border-gray-400"
                   title="Rotate right 30°"
                 >›</button>
               </div>
@@ -192,39 +230,89 @@ export function FeatureLibrary({
           </div>
         )}
 
-        {/* Feature gallery — draw mode and select mode */}
-        {(featureToolMode === 'draw' || featureToolMode === 'select') && (
-          <div className="flex-1 overflow-y-auto p-2">
-            {FEATURES_BY_CATEGORY.map(({ category, features }) => (
-              <div key={category} className="mb-3">
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1 px-1">
-                  {category}
-                </p>
-                <div
-                  className="grid gap-1"
-                  style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))` }}
+        {/* View toggle + feature gallery */}
+        {showGallery && (
+          <>
+            {/* View toggle bar — sits directly above the list/grid */}
+            <div className="px-3 py-1.5 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+              <span className="text-xs font-medium text-gray-500">Features</span>
+              <div className="flex gap-0.5">
+                <button
+                  onClick={() => setView('list')}
+                  title="List view"
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors ${
+                    view === 'list'
+                      ? 'bg-blue-100 text-blue-600 font-medium'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                  }`}
                 >
-                  {features.map(f => (
-                    <button
-                      key={f.id}
-                      onClick={() => onSelectFeature(f.id)}
-                      title={f.name}
-                      className={`flex flex-col items-center p-1 rounded border-2 transition-all ${
-                        displayFeatureId === f.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-400'
-                      }`}
-                    >
-                      <FeaturePreview feature={f} color={displayColor} />
-                      <span className="text-xs mt-0.5 text-center leading-tight text-gray-600">
-                        {f.name}
-                      </span>
-                    </button>
+                  <LayoutList size={13} />
+                  <span>List</span>
+                </button>
+                <button
+
+                  onClick={() => setView('card')}
+                  title="Card view"
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors ${
+                    view === 'card'
+                      ? 'bg-blue-100 text-blue-600 font-medium'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <LayoutGrid size={13} />
+                  <span>Grid</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {view === 'list' ? (
+                <div className="p-2">
+                  {FEATURES_BY_CATEGORY.map(({ category, features }) => (
+                    <div key={category} className="mb-3">
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1 px-1">
+                        {category}
+                      </p>
+                      <div className="space-y-0.5">
+                        {features.map(f => (
+                          <FeatureItem
+                            key={f.id}
+                            feature={f}
+                            isActive={displayFeatureId === f.id}
+                            color={displayColor}
+                            onClick={() => onSelectFeature(f.id)}
+                            view="list"
+                          />
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
-            ))}
-          </div>
+              ) : (
+                <div className="p-2">
+                  {FEATURES_BY_CATEGORY.map(({ category, features }) => (
+                    <div key={category} className="mb-3">
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1 px-1">
+                        {category}
+                      </p>
+                      <div className="grid grid-cols-2 gap-1">
+                        {features.map(f => (
+                          <FeatureItem
+                            key={f.id}
+                            feature={f}
+                            isActive={displayFeatureId === f.id}
+                            color={displayColor}
+                            onClick={() => onSelectFeature(f.id)}
+                            view="card"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {featureToolMode === 'erase' && <div className="flex-1" />}
