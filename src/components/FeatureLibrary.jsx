@@ -19,7 +19,9 @@ const MODES = [
 function modeHint(featureToolMode, hasSelection) {
   if (featureToolMode === 'draw')   return 'Click a hex to place a feature.';
   if (featureToolMode === 'erase')  return 'Click a hex to erase its feature.';
-  if (featureToolMode === 'select') return hasSelection ? 'Feature selected — edit below.' : 'Click a hex with a feature to select it.';
+  if (featureToolMode === 'select') return hasSelection
+    ? 'Feature selected — edit below.'
+    : 'Click a hex with a feature to select it.';
   return null;
 }
 
@@ -62,15 +64,13 @@ export function FeatureLibrary({
   onSetSize,
   featureRotation,
   onSetRotation,
-  isErasing,
-  onToggleErase,
 }) {
   const hasSelection = !!selectedFeatureHex && !!selectedFeatureData;
 
-  const displayColor    = featureToolMode === 'select' && hasSelection ? selectedFeatureData.color    : featureColor;
-  const displaySize     = featureToolMode === 'select' && hasSelection ? selectedFeatureData.size     : featureSize;
-  const displayRotation = featureToolMode === 'select' && hasSelection ? selectedFeatureData.rotation : featureRotation;
-  const displayFeatureId = featureToolMode === 'select' && hasSelection ? selectedFeatureData.id : selectedFeatureId;
+  const displayColor     = featureToolMode === 'select' && hasSelection ? selectedFeatureData.color    : featureColor;
+  const displaySize      = featureToolMode === 'select' && hasSelection ? selectedFeatureData.size     : featureSize;
+  const displayRotation  = featureToolMode === 'select' && hasSelection ? selectedFeatureData.rotation : featureRotation;
+  const displayFeatureId = featureToolMode === 'select' && hasSelection ? selectedFeatureData.id       : selectedFeatureId;
   const displayFeature   = FEATURE_MAP[displayFeatureId];
 
   const hint = modeHint(featureToolMode, hasSelection);
@@ -87,7 +87,7 @@ export function FeatureLibrary({
         {/* Draw / Select / Erase */}
         <div className="px-3 pt-2 flex gap-1.5 flex-shrink-0">
           {MODES.map(({ id, icon, label }) => {
-            const isActive = featureToolMode === id;
+            const isActive   = featureToolMode === id;
             const isEraseBtn = id === 'erase';
             return (
               <button
@@ -204,20 +204,20 @@ export function FeatureLibrary({
                   className="grid gap-1"
                   style={{ gridTemplateColumns: `repeat(${GRID_COLUMNS}, minmax(0, 1fr))` }}
                 >
-                  {features.map(feature => (
+                  {features.map(f => (
                     <button
-                      key={feature.id}
-                      onClick={() => onSelectFeature(feature.id)}
-                      title={feature.name}
+                      key={f.id}
+                      onClick={() => onSelectFeature(f.id)}
+                      title={f.name}
                       className={`flex flex-col items-center p-1 rounded border-2 transition-all ${
-                        selectedFeatureId === feature.id
+                        selectedFeatureId === f.id
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-400'
                       }`}
                     >
-                      <FeaturePreview feature={feature} color={featureColor} />
+                      <FeaturePreview feature={f} color={featureColor} />
                       <span className="text-xs mt-0.5 text-center leading-tight text-gray-600">
-                        {feature.name}
+                        {f.name}
                       </span>
                     </button>
                   ))}
@@ -228,7 +228,6 @@ export function FeatureLibrary({
         )}
 
         {(featureToolMode === 'select' || featureToolMode === 'erase') && <div className="flex-1" />}
-
       </div>
     </div>
   );

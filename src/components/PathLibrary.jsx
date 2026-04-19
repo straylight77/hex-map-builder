@@ -46,10 +46,8 @@ export function PathLibrary({
   selectedPathStyle,
   onUpdateSelectedStyle,
   onDeleteSelected,
-  isErasing,
-  onToggleErase,
 }) {
-  const canCommit = activePath?.length >= 2;
+  const canCommit    = activePath?.length >= 2;
   const hasSelection = !!selectedPathId;
 
   const editStyle   = pathToolMode === 'select' && hasSelection ? selectedPathStyle : style;
@@ -59,8 +57,7 @@ export function PathLibrary({
   const showMeanderControls = isRiver && (pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection));
 
   const swatches = isRiver ? RIVER_SWATCHES : ROAD_SWATCHES;
-
-  const hint = modeHint(toolLabel, pathToolMode, isDrawingPath, activePath, hasSelection);
+  const hint     = modeHint(toolLabel, pathToolMode, isDrawingPath, activePath, hasSelection);
 
   return (
     <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
@@ -74,7 +71,7 @@ export function PathLibrary({
         {/* Draw / Select / Erase */}
         <div className="px-3 pt-2 flex gap-1.5 flex-shrink-0">
           {MODES.map(({ id, icon, label }) => {
-            const isActive = pathToolMode === id;
+            const isActive   = pathToolMode === id;
             const isEraseBtn = id === 'erase';
             return (
               <button
@@ -127,7 +124,6 @@ export function PathLibrary({
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
 
-          {/* Style controls */}
           {editStyle && (pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection)) && (
             <>
               {/* Color */}
@@ -188,7 +184,6 @@ export function PathLibrary({
                     {editStyle.spline?.enabled ? '✓ On' : 'Off'}
                   </button>
                 </div>
-
                 {editStyle.spline?.enabled && (
                   <div className="mt-2">
                     <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -277,7 +272,7 @@ export function PathLibrary({
             </>
           )}
 
-          {/* Draw mode: commit/cancel buttons */}
+          {/* Draw mode: commit/cancel */}
           {pathToolMode === 'draw' && isDrawingPath && (
             <div className="border-t border-gray-200 pt-3 space-y-2">
               <button
@@ -299,7 +294,6 @@ export function PathLibrary({
               </button>
             </div>
           )}
-
         </div>
       </div>
     </div>

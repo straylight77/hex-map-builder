@@ -217,10 +217,6 @@ function drawReeds(ctx, x, y) {
 // ---------------------------------------------------------------------------
 // Terrain tile definitions
 // ---------------------------------------------------------------------------
-// `drawPattern` receives (ctx, x, y, size) where ctx already has globalAlpha=0.4
-// and strokeStyle/fillStyle set to a sensible ink color.
-// Return nothing; just draw.
-// Set pattern: null for solid fills with no pattern overlay.
 
 export const TERRAIN_TILES = [
   {
@@ -302,11 +298,10 @@ export const TERRAIN_TILES = [
     drawPattern: drawReeds,
   },
   // Special tile: custom color — color is stored per-hex in tile data, not here.
-  // The id is used as a sentinel; actual color comes from tile.customColor.
   {
     id: 'custom',
     name: 'Custom',
-    color: '#cccccc',   // default preview color; overridden per-hex
+    color: '#cccccc',
     drawPattern: null,
     isCustom: true,
   },
@@ -317,15 +312,19 @@ export const TERRAIN_MAP = Object.fromEntries(
   TERRAIN_TILES.map(t => [t.id, t])
 );
 
+/**
+ * Display order for the tile picker: custom tile first, then all others.
+ * Centralised here so TileLibrary and any future consumers don't reimplement it.
+ */
+export const ORDERED_TILES = [
+  TERRAIN_TILES.find(t => t.isCustom),
+  ...TERRAIN_TILES.filter(t => !t.isCustom),
+];
+
 // ---------------------------------------------------------------------------
 // Water tile classification
 // ---------------------------------------------------------------------------
 
-/**
- * Tile IDs that represent water. These tiles are redrawn on top of rivers
- * in the renderer so that rivers appear to flow into water bodies naturally
- * rather than overdrawing the water tile patterns.
- */
 export const WATER_TILE_IDS = new Set([
   'shallow-water',
   'water',

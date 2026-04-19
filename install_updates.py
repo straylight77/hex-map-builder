@@ -13,43 +13,57 @@ import os
 import shutil
 from pathlib import Path
 
-# ── Known files: bare filename → destination directory ──
-
+# ── Known files: bare filename → destination directory ──────────────────────
+#
+# src/
 DEST = {
-    "App.jsx": "src",
-    "main.jsx": "src",
-    "index.css": "src",
-    "App.css": "src",
+    # Root source files
+    "App.jsx":                  "src",
+    "main.jsx":                 "src",
+    "index.css":                "src",
+    "App.css":                  "src",
 
-    "Toolbar.jsx": "src/components",
-    "TileLibrary.jsx": "src/components",
-    "TilePreview.jsx": "src/components",
-    "PathLibrary.jsx": "src/components",
-    "FeatureLibrary.jsx": "src/components",
-    "UI.jsx": "src/components",
-    "SwatchColorPicker.jsx": "src/components",
+    # Components
+    "ErrorBoundary.jsx":        "src/components",
+    "FeatureLibrary.jsx":       "src/components",
+    "PathLibrary.jsx":          "src/components",
+    "SwatchColorPicker.jsx":    "src/components",
+    "TileLibrary.jsx":          "src/components",
+    "TilePreview.jsx":          "src/components",
+    "Toolbar.jsx":              "src/components",
+    "UI.jsx":                   "src/components",
 
-    "useViewport.js": "src/hooks",
-    "useTools.js": "src/hooks",
-    "useMapData.js": "src/hooks",
+    # Data
+    "features.js":              "src/data",
+    "mapSchema.js":             "src/data",
+    "swatches.js":              "src/data",
+    "terrain.js":               "src/data",
 
-    "terrain.js": "src/data",
-    "features.js": "src/data",
-    "mapSchema.js": "src/data",
+    # Hooks
+    "useFeatureTools.js":       "src/hooks",
+    "useMapData.js":            "src/hooks",
+    "usePathTools.js":          "src/hooks",
+    "useTileTools.js":          "src/hooks",
+    "useTools.js":              "src/hooks",
+    "useViewport.js":           "src/hooks",
 
-    "renderer.js": "src/rendering",
-    "drawPrimitives.js": "src/rendering",
-    "drawPath.js": "src/rendering",
+    # Rendering
+    "drawPath.js":              "src/rendering",
+    "drawPrimitives.js":        "src/rendering",
+    "renderer.js":              "src/rendering",
+    "renderState.js":           "src/rendering",
 
-    "hex.js": "src/utils",
-    "hitTest.js": "src/utils",
+    # Utils
+    "hex.js":                   "src/utils",
+    "hitTest.js":               "src/utils",
+    "styleUtils.js":            "src/utils",
 }
 
-# ── Resolve script directory (repo root) ──
+# ── Resolve script directory (repo root) ────────────────────────────────────
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
-# ── Process arguments ──
+# ── Process arguments ────────────────────────────────────────────────────────
 
 if len(sys.argv) < 2:
     print(f"Usage: {Path(sys.argv[0]).name} <file> [file ...]")
@@ -72,7 +86,7 @@ for src in sys.argv[1:]:
         skipped += 1
         continue
 
-    dest_dir = SCRIPT_DIR / DEST[bare]
+    dest_dir  = SCRIPT_DIR / DEST[bare]
     dest_path = dest_dir / bare
 
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -85,4 +99,3 @@ print("")
 print(f"{ok} file(s) installed, {skipped} skipped.")
 if ok > 0:
     print("Run 'npm run dev' to start the dev server.")
-

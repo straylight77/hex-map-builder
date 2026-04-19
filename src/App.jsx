@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { renderMap } from './rendering/renderer.js';
+import { buildRenderState, buildExportRenderState } from './rendering/renderState.js';
 import { useViewport } from './hooks/useViewport.js';
 import { useMapData } from './hooks/useMapData.js';
 import { useTools } from './hooks/useTools.js';
@@ -9,36 +10,39 @@ import { Toolbar } from './components/Toolbar.jsx';
 import { TileLibrary } from './components/TileLibrary.jsx';
 import { PathLibrary } from './components/PathLibrary.jsx';
 import { FeatureLibrary } from './components/FeatureLibrary.jsx';
+import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import { MenuBar, ExpandDialog, StatusBar } from './components/UI.jsx';
 
 export default function App() {
-  const canvasRef = useRef(null);
-  const [showGrid, setShowGrid] = useState(true);
+  const canvasRef      = useRef(null);
+  const isPaintingRef  = useRef(false);
+  const [showGrid, setShowGrid]               = useState(true);
   const [showExpandDialog, setShowExpandDialog] = useState(false);
-  const [hoveredHex, setHoveredHex] = useState(null);
-  const isPaintingRef = useRef(false);
+  const [hoveredHex, setHoveredHex]           = useState(null);
 
   const viewport = useViewport();
   const mapData  = useMapData();
   const tools    = useTools();
 
-  const isPathTool    = tools.selectedTool === 'road' || tools.selectedTool === 'river';
-  const isFeatureTool = tools.selectedTool === 'feature';
-  const isTileTool    = tools.selectedTool === 'tile';
+  const { selectedTool, tile, feature, path, activePathStyle, activeToolIsErasing } = tools;
+
+  const isPathTool    = selectedTool === 'road' || selectedTool === 'river';
+  const isFeatureTool = selectedTool === 'feature';
+  const isTileTool    = selectedTool === 'tile';
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   const activePaths = useCallback(() => {
-    if (tools.selectedTool === 'road')  return mapData.mapDoc.roads;
-    if (tools.selectedTool === 'river') return mapData.mapDoc.rivers;
+    if (selectedTool === 'road')  return mapData.mapDoc.roads;
+    if (selectedTool === 'river') return mapData.mapDoc.rivers;
     return [];
-  }, [tools.selectedTool, mapData.mapDoc.roads, mapData.mapDoc.rivers]);
+  }, [selectedTool, mapData.mapDoc.roads, mapData.mapDoc.rivers]);
 
   const selectedPathStyle = useCallback(() => {
-    if (!tools.selectedPathId) return null;
+    if (!path.selectedPathId) return null;
     const all = [...mapData.mapDoc.roads, ...mapData.mapDoc.rivers];
-    return all.find(p => p.id === tools.selectedPathId)?.style ?? null;
-  }, [tools.selectedPathId, mapData.mapDoc.roads, mapData.mapDoc.rivers]);
+    return all.find(p => p.id === path.selectedPathId)?.style ?? null;
+  }, [path.selectedPathId, mapData.mapDoc.roads, mapData.mapDoc.rivers]);
 
   const canvasToWorld = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -52,121 +56,120 @@ export default function App() {
     return pixelToHex(world.x, world.y, HEX_SIZE);
   }, [canvasToWorld]);
 
-  const selectedFeatureData = tools.selectedFeatureHex
-    ? mapData.mapDoc.features.get(hexKey(tools.selectedFeatureHex.q, tools.selectedFeatureHex.r)) ?? null
+  const selectedFeatureData = feature.selectedHex
+    ? mapData.mapDoc.features.get(hexKey(feature.selectedHex.q, feature.selectedHex.r)) ?? null
     : null;
 
-  const selectedTileHexData = tools.selectedTileHex
-    ? mapData.mapDoc.tiles.get(hexKey(tools.selectedTileHex.q, tools.selectedTileHex.r)) ?? null
+  const selectedTileHexData = tile.selectedHex
+    ? mapData.mapDoc.tiles.get(hexKey(tile.selectedHex.q, tile.selectedHex.r)) ?? null
     : null;
 
   // ── Canvas render ──────────────────────────────────────────────────────────
 
   useEffect(() => {
-    renderMap(canvasRef.current, {
-      tiles:              mapData.mapDoc.tiles,
-      features:           mapData.mapDoc.features,
-      roads:              mapData.mapDoc.roads,
-      rivers:             mapData.mapDoc.rivers,
-      dimensions:         mapData.mapDoc.dimensions,
-      viewport:           viewport.viewport,
+    renderMap(canvasRef.current, buildRenderState({
+      mapDoc:     mapData.mapDoc,
+      viewport:   viewport.viewport,
       showGrid,
       hoveredHex,
-      selectedTool:       tools.selectedTool,
-      isErasing:          tools.activeToolIsErasing,
-      activePath:         tools.activePath,
-      activePathStyle:    tools.activePathStyle,
-      pathToolMode:       tools.pathToolMode,
-      hoveredPathId:      tools.hoveredPathId,
-      selectedPathId:     tools.selectedPathId,
-      featureToolMode:    tools.featureToolMode,
-      selectedFeatureHex: tools.selectedFeatureHex,
-      tileToolMode:       tools.tileToolMode,
-      selectedTileHex:    tools.selectedTileHex,
-    });
+      selectedTool,
+      tile,
+      feature,
+      path,
+      activePathStyle,
+      activeToolIsErasing,
+    }));
   }, [
     mapData.mapDoc,
     viewport.viewport,
     showGrid,
     hoveredHex,
-    tools.selectedTool,
-    tools.activeToolIsErasing,
-    tools.activePath,
-    tools.activePathStyle,
-    tools.pathToolMode,
-    tools.hoveredPathId,
-    tools.selectedPathId,
-    tools.featureToolMode,
-    tools.selectedFeatureHex,
-    tools.tileToolMode,
-    tools.selectedTileHex,
+    selectedTool,
+    tile,
+    feature,
+    path,
+    activePathStyle,
+    activeToolIsErasing,
   ]);
 
   // ── Path commit ────────────────────────────────────────────────────────────
 
   const handleCommitPath = useCallback(() => {
-    if (!tools.isDrawingPath) return;
-    const path = tools.commitPath();
-    if (!path) return;
-    if (tools.selectedTool === 'road')  mapData.commitRoad(path, tools.roadStyle);
-    if (tools.selectedTool === 'river') mapData.commitRiver(path, tools.riverStyle);
-  }, [tools, mapData]);
+    if (!path.isDrawing) return;
+    const committed = path.commitPath();
+    if (!committed) return;
+    if (selectedTool === 'road')  mapData.commitRoad(committed, path.roadStyle);
+    if (selectedTool === 'river') mapData.commitRiver(committed, path.riverStyle);
+  }, [path, selectedTool, mapData]);
 
   const handleDeleteSelectedPath = useCallback(() => {
-    if (!tools.selectedPathId) return;
-    const isRoad = mapData.mapDoc.roads.some(r => r.id === tools.selectedPathId);
-    if (isRoad) mapData.deleteRoad(tools.selectedPathId);
-    else        mapData.deleteRiver(tools.selectedPathId);
-    tools.clearPathSelection();
-  }, [tools, mapData]);
+    if (!path.selectedPathId) return;
+    const isRoad = mapData.mapDoc.roads.some(r => r.id === path.selectedPathId);
+    if (isRoad) mapData.deleteRoad(path.selectedPathId);
+    else        mapData.deleteRiver(path.selectedPathId);
+    path.clearSelection();
+  }, [path, mapData]);
 
-  // ── Feature delete ─────────────────────────────────────────────────────────
+  // ── Feature actions ────────────────────────────────────────────────────────
 
   const handleDeleteSelectedFeature = useCallback(() => {
-    if (!tools.selectedFeatureHex) return;
-    mapData.removeFeature(tools.selectedFeatureHex.q, tools.selectedFeatureHex.r);
-    tools.clearFeatureSelection();
-  }, [tools, mapData]);
-
-  // ── Feature style update (select mode) ────────────────────────────────────
+    if (!feature.selectedHex) return;
+    mapData.removeFeature(feature.selectedHex.q, feature.selectedHex.r);
+    feature.clearSelection();
+  }, [feature, mapData]);
 
   const handleFeatureSetColor = useCallback((color) => {
-    if (tools.featureToolMode === 'select' && tools.selectedFeatureHex) {
-      mapData.updateFeature(tools.selectedFeatureHex.q, tools.selectedFeatureHex.r, { color });
+    feature.setColor(color);
+    if (feature.mode === 'select' && feature.selectedHex) {
+      mapData.updateFeature(feature.selectedHex.q, feature.selectedHex.r, { color });
     }
-    tools.setFeatureColor(color);
-  }, [tools, mapData]);
+  }, [feature, mapData]);
 
   const handleFeatureSetSize = useCallback((size) => {
-    if (tools.featureToolMode === 'select' && tools.selectedFeatureHex) {
-      mapData.updateFeature(tools.selectedFeatureHex.q, tools.selectedFeatureHex.r, { size });
+    feature.setSize(size);
+    if (feature.mode === 'select' && feature.selectedHex) {
+      mapData.updateFeature(feature.selectedHex.q, feature.selectedHex.r, { size });
     }
-    tools.setFeatureSize(size);
-  }, [tools, mapData]);
+  }, [feature, mapData]);
 
   const handleFeatureSetRotation = useCallback((rotation) => {
-    if (tools.featureToolMode === 'select' && tools.selectedFeatureHex) {
-      mapData.updateFeature(tools.selectedFeatureHex.q, tools.selectedFeatureHex.r, { rotation });
+    feature.setRotation(rotation);
+    if (feature.mode === 'select' && feature.selectedHex) {
+      mapData.updateFeature(feature.selectedHex.q, feature.selectedHex.r, { rotation });
     }
-    tools.setFeatureRotation(rotation);
-  }, [tools, mapData]);
+  }, [feature, mapData]);
 
-  // ── Tile select mode ───────────────────────────────────────────────────────
+  // ── Tile select-mode actions ───────────────────────────────────────────────
 
   const handleSelectModeChangeTile = useCallback((tileId) => {
-    tools.selectTile(tileId);
-    if (tools.selectedTileHex) {
-      const extraData = tileId === 'custom' ? { customColor: tools.customTileColor } : {};
-      mapData.placeTile(tools.selectedTileHex.q, tools.selectedTileHex.r, tileId, extraData);
+    tile.setSelectedTile(tileId);
+    if (tile.selectedHex) {
+      const extraData = tileId === 'custom' ? { customColor: tile.customColor } : {};
+      mapData.placeTile(tile.selectedHex.q, tile.selectedHex.r, tileId, extraData);
     }
-  }, [tools, mapData]);
+  }, [tile, mapData]);
 
   const handleSelectModeSetCustomColor = useCallback((color) => {
-    tools.setCustomTileColor(color);
-    if (tools.selectedTileHex && tools.tileToolMode === 'select' && selectedTileHexData?.type === 'custom') {
-      mapData.placeTile(tools.selectedTileHex.q, tools.selectedTileHex.r, 'custom', { customColor: color });
+    tile.setCustomColor(color);
+    if (tile.selectedHex && tile.mode === 'select' && selectedTileHexData?.type === 'custom') {
+      mapData.placeTile(tile.selectedHex.q, tile.selectedHex.r, 'custom', { customColor: color });
     }
-  }, [tools, mapData, selectedTileHexData]);
+  }, [tile, mapData, selectedTileHexData]);
+
+  const handleDeleteSelectedTile = useCallback(() => {
+    if (!tile.selectedHex) return;
+    mapData.eraseTile(tile.selectedHex.q, tile.selectedHex.r);
+    tile.clearSelection();
+  }, [tile, mapData]);
+
+  // ── Path style update (select mode) ───────────────────────────────────────
+
+  const handleUpdateSelectedPathStyle = useCallback((updates) => {
+    if (!path.selectedPathId) return;
+    const isRoad = mapData.mapDoc.roads.some(r => r.id === path.selectedPathId);
+    if (isRoad) mapData.updateRoad(path.selectedPathId, updates);
+    else        mapData.updateRiver(path.selectedPathId, updates);
+  }, [path.selectedPathId, mapData]);
 
   // ── Keyboard ───────────────────────────────────────────────────────────────
 
@@ -174,18 +177,18 @@ export default function App() {
     const onKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-      if (e.key === 'Enter' && tools.isDrawingPath) handleCommitPath();
+      if (e.key === 'Enter' && path.isDrawing) handleCommitPath();
 
       if (e.key === 'Escape') {
-        tools.cancelPath();
-        tools.clearPathSelection();
-        tools.clearFeatureSelection();
-        tools.clearTileSelection();
+        path.cancelPath();
+        path.clearSelection();
+        feature.clearSelection();
+        tile.clearSelection();
       }
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (tools.selectedPathId) handleDeleteSelectedPath();
-        else if (tools.selectedFeatureHex) handleDeleteSelectedFeature();
+        if (path.selectedPathId)    handleDeleteSelectedPath();
+        else if (feature.selectedHex) handleDeleteSelectedFeature();
       }
 
       const shortcuts = { h: 'hand', t: 'tile', f: 'feature', r: 'road', w: 'river' };
@@ -193,7 +196,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [tools, handleCommitPath, handleDeleteSelectedPath, handleDeleteSelectedFeature]); // eslint-disable-line
+  }, [tools, path, feature, tile, handleCommitPath, handleDeleteSelectedPath, handleDeleteSelectedFeature]); // eslint-disable-line
 
   // ── Mouse handlers ─────────────────────────────────────────────────────────
 
@@ -201,7 +204,7 @@ export default function App() {
     if (e.button !== 0 && e.button !== 2) return;
     if (e.button === 2 && !isFeatureTool) return;
 
-    if (tools.selectedTool === 'hand') {
+    if (selectedTool === 'hand') {
       viewport.startDrag(e.clientX, e.clientY);
       return;
     }
@@ -210,19 +213,16 @@ export default function App() {
     if (isTileTool) {
       const hex = canvasToHex(e);
       if (!hex) return;
-
-      if (tools.tileToolMode === 'draw') {
+      if (tile.mode === 'draw') {
         isPaintingRef.current = true;
-        const extraData = tools.selectedTile === 'custom'
-          ? { customColor: tools.customTileColor }
-          : {};
-        mapData.placeTile(hex.q, hex.r, tools.selectedTile, extraData);
-      } else if (tools.tileToolMode === 'erase') {
+        const extraData = tile.selectedTile === 'custom' ? { customColor: tile.customColor } : {};
+        mapData.placeTile(hex.q, hex.r, tile.selectedTile, extraData);
+      } else if (tile.mode === 'erase') {
         isPaintingRef.current = true;
         mapData.eraseTile(hex.q, hex.r);
-      } else if (tools.tileToolMode === 'select') {
+      } else if (tile.mode === 'select') {
         const hasTile = mapData.mapDoc.tiles.has(hexKey(hex.q, hex.r));
-        tools.selectTileHex(hasTile ? hex : null);
+        tile.selectHex(hasTile ? hex : null);
       }
       return;
     }
@@ -231,51 +231,46 @@ export default function App() {
     if (isFeatureTool) {
       const hex = canvasToHex(e);
       if (!hex) return;
-
-      if (tools.isFeatureErasing) {
+      if (feature.mode === 'draw') {
+        if (e.button === 2) mapData.removeFeature(hex.q, hex.r);
+        else                mapData.placeFeature(hex.q, hex.r, feature.buildFeatureData());
+      } else if (feature.mode === 'erase') {
         mapData.removeFeature(hex.q, hex.r);
-        return;
-      }
-
-      if (tools.featureToolMode === 'draw') {
-        if (e.button === 2) {
-          mapData.removeFeature(hex.q, hex.r);
-        } else {
-          mapData.placeFeature(hex.q, hex.r, tools.buildFeatureData());
-        }
-      } else if (tools.featureToolMode === 'select') {
+      } else if (feature.mode === 'select') {
         const hasFeature = mapData.mapDoc.features.has(hexKey(hex.q, hex.r));
-        tools.selectFeatureHex(hasFeature ? hex : null);
+        feature.selectHex(hasFeature ? hex : null);
       }
       return;
     }
 
     // ── Path tools ──
     if (isPathTool) {
-      const isErasing = tools.pathToolMode === 'erase';
-
-      if (isErasing) {
+      if (path.mode === 'erase') {
         const world = canvasToWorld(e);
         if (!world) return;
         const hitId = hitTestPaths(world, activePaths());
         if (hitId) {
-          if (tools.selectedTool === 'road') mapData.deleteRoad(hitId);
-          else                               mapData.deleteRiver(hitId);
+          if (selectedTool === 'road') mapData.deleteRoad(hitId);
+          else                         mapData.deleteRiver(hitId);
         }
         return;
       }
-
-      if (tools.pathToolMode === 'draw') {
+      if (path.mode === 'draw') {
         const hex = canvasToHex(e);
-        if (hex) tools.extendPath(hex.q, hex.r);
-      } else if (tools.pathToolMode === 'select') {
+        if (hex) path.extendPath(hex.q, hex.r);
+      } else if (path.mode === 'select') {
         const world = canvasToWorld(e);
         if (!world) return;
         const hitId = hitTestPaths(world, activePaths());
-        tools.selectPath(hitId ?? null);
+        path.selectPath(hitId ?? null);
       }
     }
-  }, [tools, mapData, viewport, isPathTool, isFeatureTool, isTileTool, canvasToHex, canvasToWorld, activePaths]);
+  }, [
+    selectedTool, isTileTool, isFeatureTool, isPathTool,
+    tile, feature, path,
+    mapData, viewport,
+    canvasToHex, canvasToWorld, activePaths,
+  ]);
 
   const handleContextMenu = useCallback((e) => {
     if (isFeatureTool) e.preventDefault();
@@ -290,44 +285,35 @@ export default function App() {
     const hex = canvasToHex(e);
     if (hex) setHoveredHex(hex);
 
-    // Tile painting/erasing (drag in draw or erase mode)
+    // Tile drag-paint / drag-erase
     if (isPaintingRef.current && isTileTool && hex) {
-      if (tools.tileToolMode === 'draw') {
-        const extraData = tools.selectedTile === 'custom'
-          ? { customColor: tools.customTileColor }
-          : {};
-        mapData.placeTile(hex.q, hex.r, tools.selectedTile, extraData);
-      } else if (tools.tileToolMode === 'erase') {
+      if (tile.mode === 'draw') {
+        const extraData = tile.selectedTile === 'custom' ? { customColor: tile.customColor } : {};
+        mapData.placeTile(hex.q, hex.r, tile.selectedTile, extraData);
+      } else if (tile.mode === 'erase') {
         mapData.eraseTile(hex.q, hex.r);
       }
     }
 
-    // Path hover for select and erase modes
-    if (isPathTool && (tools.pathToolMode === 'select' || tools.pathToolMode === 'erase')) {
+    // Path hover for select / erase modes
+    if (isPathTool && (path.mode === 'select' || path.mode === 'erase')) {
       const world = canvasToWorld(e);
-      if (world) {
-        const hitId = hitTestPaths(world, activePaths());
-        tools.hoverPath(hitId ?? null);
-      }
+      if (world) path.hoverPath(hitTestPaths(world, activePaths()) ?? null);
     }
-  }, [viewport, tools, mapData, isPathTool, isTileTool, canvasToHex, canvasToWorld, activePaths]);
+  }, [viewport, tile, path, mapData, isPathTool, isTileTool, canvasToHex, canvasToWorld, activePaths]);
 
-  const handleMouseUp = useCallback(() => {
-    isPaintingRef.current = false;
-    viewport.endDrag();
-  }, [viewport]);
-
+  const handleMouseUp    = useCallback(() => { isPaintingRef.current = false; viewport.endDrag(); }, [viewport]);
   const handleMouseLeave = useCallback(() => {
     isPaintingRef.current = false;
     viewport.endDrag();
     setHoveredHex(null);
-    if (isPathTool) tools.hoverPath(null);
-  }, [viewport, isPathTool, tools]);
+    if (isPathTool) path.hoverPath(null);
+  }, [viewport, isPathTool, path]);
 
   const handleDoubleClick = useCallback(() => {
-    if (!isPathTool || tools.pathToolMode !== 'draw') return;
+    if (!isPathTool || path.mode !== 'draw') return;
     handleCommitPath();
-  }, [isPathTool, tools, handleCommitPath]);
+  }, [isPathTool, path, handleCommitPath]);
 
   const handleWheel = useCallback((e) => viewport.handleWheel(e), [viewport]);
 
@@ -341,53 +327,34 @@ export default function App() {
   }, [mapData, viewport]);
 
   const handleExportPNG = useCallback(() => {
-    const { tiles, features, roads, rivers, dimensions } = mapData.mapDoc;
-    const HEX_W = HEX_SIZE * Math.sqrt(3);
-    const HEX_H = HEX_SIZE * 2;
+    const { dimensions } = mapData.mapDoc;
+    const HEX_W  = HEX_SIZE * Math.sqrt(3);
+    const HEX_H  = HEX_SIZE * 2;
     const padding = 2;
+
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width  = (dimensions.width  + padding) * HEX_W;
     exportCanvas.height = (dimensions.height + padding) * HEX_H * 0.75;
-    renderMap(exportCanvas, {
-      tiles, features, roads, rivers, dimensions,
-      viewport: { x: 0, y: 0, scale: 1 },
-      showGrid: true, hoveredHex: null,
-      selectedTool: 'tile', isErasing: false,
-      activePath: [], activePathStyle: null,
-      pathToolMode: 'draw', hoveredPathId: null, selectedPathId: null,
-      featureToolMode: 'draw', selectedFeatureHex: null,
-      tileToolMode: 'draw', selectedTileHex: null,
-    });
+
+    renderMap(exportCanvas, buildExportRenderState(mapData.mapDoc, { x: 0, y: 0, scale: 1 }));
+
     exportCanvas.toBlob(blob => {
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a   = document.createElement('a');
       a.href = url; a.download = `hexmap-${Date.now()}.png`; a.click();
       URL.revokeObjectURL(url);
     });
   }, [mapData.mapDoc]);
 
-  const handleUpdateSelectedPathStyle = useCallback((updates) => {
-    if (!tools.selectedPathId) return;
-    const isRoad = mapData.mapDoc.roads.some(r => r.id === tools.selectedPathId);
-    if (isRoad) mapData.updateRoad(tools.selectedPathId, updates);
-    else        mapData.updateRiver(tools.selectedPathId, updates);
-  }, [tools.selectedPathId, mapData]);
-
-  const handleDeleteSelectedTile = useCallback(() => {
-    if (!tools.selectedTileHex) return;
-    mapData.eraseTile(tools.selectedTileHex.q, tools.selectedTileHex.r);
-    tools.clearTileSelection();
-  }, [tools, mapData]);
-
   // ── Cursor ─────────────────────────────────────────────────────────────────
 
   const cursorStyle =
-    tools.selectedTool === 'hand' || viewport.isDragging  ? 'grab'      :
-    tools.activeToolIsErasing                              ? 'crosshair' :
-    isPathTool && tools.pathToolMode === 'select'          ? 'pointer'   :
-    isPathTool && tools.pathToolMode === 'erase'           ? 'crosshair' :
-    isFeatureTool && tools.featureToolMode === 'select'    ? 'pointer'   :
-    isTileTool && tools.tileToolMode === 'select'          ? 'pointer'   :
+    selectedTool === 'hand' || viewport.isDragging     ? 'grab'      :
+    activeToolIsErasing                                 ? 'crosshair' :
+    isPathTool && path.mode === 'select'                ? 'pointer'   :
+    isPathTool && path.mode === 'erase'                 ? 'crosshair' :
+    isFeatureTool && feature.mode === 'select'          ? 'pointer'   :
+    isTileTool && tile.mode === 'select'                ? 'pointer'   :
     'crosshair';
 
   const displayZoomPercent = Math.round((viewport.viewport.scale / 0.5) * 100);
@@ -408,40 +375,40 @@ export default function App() {
 
       <div className="flex flex-1 overflow-hidden relative">
         <Toolbar
-          selectedTool={tools.selectedTool}
+          selectedTool={selectedTool}
           onSelectTool={tools.selectTool}
           onZoomIn={() => viewport.zoomBy(0.05)}
           onZoomOut={() => viewport.zoomBy(-0.05)}
           onResetView={viewport.resetViewport}
         />
 
-        <div className="absolute inset-0">
-          <canvas
-            ref={canvasRef}
-            className="w-full h-full"
-            style={{ cursor: cursorStyle }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseLeave}
-            onDoubleClick={handleDoubleClick}
-            onWheel={handleWheel}
-            onContextMenu={handleContextMenu}
-          />
-        </div>
+        <ErrorBoundary>
+          <div className="absolute inset-0">
+            <canvas
+              ref={canvasRef}
+              className="w-full h-full"
+              style={{ cursor: cursorStyle }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              onDoubleClick={handleDoubleClick}
+              onWheel={handleWheel}
+              onContextMenu={handleContextMenu}
+            />
+          </div>
+        </ErrorBoundary>
 
         {/* ── Tile panel ── */}
         {isTileTool && (
           <TileLibrary
-            tileToolMode={tools.tileToolMode}
-            onSetTileMode={tools.setTileMode}
-            selectedTile={tools.selectedTile}
+            tileToolMode={tile.mode}
+            onSetTileMode={tile.setMode}
+            selectedTile={tile.selectedTile}
             onSelectTile={handleSelectModeChangeTile}
-            isErasing={tools.isTileErasing}
-            onToggleErase={tools.toggleErase}
-            customTileColor={tools.customTileColor}
+            customTileColor={tile.customColor}
             onSetCustomTileColor={handleSelectModeSetCustomColor}
-            selectedHex={tools.selectedTileHex}
+            selectedHex={tile.selectedHex}
             selectedHexTileId={selectedTileHexData?.type ?? null}
             selectedHexCustomColor={selectedTileHexData?.customColor ?? null}
             onDeleteSelected={handleDeleteSelectedTile}
@@ -451,43 +418,39 @@ export default function App() {
         {/* ── Feature panel ── */}
         {isFeatureTool && (
           <FeatureLibrary
-            featureToolMode={tools.featureToolMode}
-            onSetFeatureMode={tools.setFeatureMode}
-            selectedFeatureId={tools.selectedFeatureId}
-            onSelectFeature={tools.selectFeature}
-            selectedFeatureHex={tools.selectedFeatureHex}
+            featureToolMode={feature.mode}
+            onSetFeatureMode={feature.setMode}
+            selectedFeatureId={feature.selectedId}
+            onSelectFeature={feature.setSelectedId}
+            selectedFeatureHex={feature.selectedHex}
             selectedFeatureData={selectedFeatureData}
             onDeleteSelected={handleDeleteSelectedFeature}
-            featureColor={tools.featureColor}
+            featureColor={feature.color}
             onSetColor={handleFeatureSetColor}
-            featureSize={tools.featureSize}
+            featureSize={feature.size}
             onSetSize={handleFeatureSetSize}
-            featureRotation={tools.featureRotation}
+            featureRotation={feature.rotation}
             onSetRotation={handleFeatureSetRotation}
-            isErasing={tools.isFeatureErasing}
-            onToggleErase={tools.toggleFeatureErase}
           />
         )}
 
         {/* ── Road / River panel ── */}
         {isPathTool && (
           <PathLibrary
-            toolLabel={tools.selectedTool === 'road' ? 'Road' : 'River'}
-            isRiver={tools.selectedTool === 'river'}
-            pathToolMode={tools.pathToolMode}
-            onSetPathMode={tools.setPathMode}
-            style={tools.selectedTool === 'road' ? tools.roadStyle : tools.riverStyle}
-            onUpdateStyle={tools.selectedTool === 'road' ? tools.updateRoadStyle : tools.updateRiverStyle}
-            isDrawingPath={tools.isDrawingPath}
-            activePath={tools.activePath}
+            toolLabel={selectedTool === 'road' ? 'Road' : 'River'}
+            isRiver={selectedTool === 'river'}
+            pathToolMode={path.mode}
+            onSetPathMode={path.setMode}
+            style={selectedTool === 'road' ? path.roadStyle : path.riverStyle}
+            onUpdateStyle={selectedTool === 'road' ? path.updateRoadStyle : path.updateRiverStyle}
+            isDrawingPath={path.isDrawing}
+            activePath={path.activePath}
             onCommit={handleCommitPath}
-            onCancel={tools.cancelPath}
-            selectedPathId={tools.selectedPathId}
+            onCancel={path.cancelPath}
+            selectedPathId={path.selectedPathId}
             selectedPathStyle={selectedPathStyle()}
             onUpdateSelectedStyle={handleUpdateSelectedPathStyle}
             onDeleteSelected={handleDeleteSelectedPath}
-            isErasing={tools.selectedTool === 'road' ? tools.isRoadErasing : tools.isRiverErasing}
-            onToggleErase={tools.selectedTool === 'road' ? tools.toggleRoadErase : tools.toggleRiverErase}
           />
         )}
       </div>

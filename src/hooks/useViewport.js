@@ -1,32 +1,26 @@
-import { useState, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 4;
 
 const DEFAULT_VIEWPORT = { x: 0, y: 0, scale: 0.5 };
 
+const clampScale = (s) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
+
 /**
  * Manages the canvas viewport: pan position and zoom scale.
  *
- * Returns viewport state and all event handlers needed for pan/zoom.
- * The canvas component calls these handlers from its mouse/wheel events.
+ * dragStart is stored in a ref rather than state — it's an ephemeral
+ * interaction anchor that should never trigger a re-render on its own.
  */
 export function useViewport(initialViewport = DEFAULT_VIEWPORT) {
-  const [viewport, setViewport] = useState(initialViewport);
+  const [viewport, setViewport]   = useState(initialViewport);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const dragStartRef = useRef({ x: 0, y: 0 });
 
-  const clampScale = (s) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
+  const setViewportDirect = useCallback((vp) => setViewport(vp), []);
 
-  // ── Direct setters ────────────────────────────────────────────────────────
-
-  const setViewportDirect = useCallback((vp) => {
-    setViewport(vp);
-  }, []);
-
-  const resetViewport = useCallback(() => {
-    setViewport(DEFAULT_VIEWPORT);
-  }, []);
+  const resetViewport = useCallback(() => setViewport(DEFAULT_VIEWPORT), []);
 
   const zoomBy = useCallback((delta) => {
     setViewport(prev => ({ ...prev, scale: clampScale(prev.scale + delta) }));
@@ -36,18 +30,11 @@ export function useViewport(initialViewport = DEFAULT_VIEWPORT) {
     setViewport(prev => ({ ...prev, scale: clampScale(scale) }));
   }, []);
 
-  // ── Mouse event handlers ──────────────────────────────────────────────────
-
-  /**
-   * Call from the canvas onMouseDown when the hand tool is active
-   * or when the user holds Space.
-   */
   const startDrag = useCallback((clientX, clientY) => {
     setIsDragging(true);
-    setDragStart(prev => ({ x: clientX - prev.x, y: clientY - prev.y }));
-    // Re-anchor dragStart relative to current viewport
+    // Capture the anchor synchronously — no setter side-effect needed
     setViewport(vp => {
-      setDragStart({ x: clientX - vp.x, y: clientY - vp.y });
+      dragStartRef.current = { x: clientX - vp.x, y: clientY - vp.y };
       return vp;
     });
   }, []);
@@ -56,18 +43,13 @@ export function useViewport(initialViewport = DEFAULT_VIEWPORT) {
     if (!isDragging) return;
     setViewport(prev => ({
       ...prev,
-      x: clientX - dragStart.x,
-      y: clientY - dragStart.y,
+      x: clientX - dragStartRef.current.x,
+      y: clientY - dragStartRef.current.y,
     }));
-  }, [isDragging, dragStart]);
+  }, [isDragging]);
 
-  const endDrag = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+  const endDrag = useCallback(() => setIsDragging(false), []);
 
-  /**
-   * Wheel handler — Ctrl/Cmd + scroll = zoom, plain scroll = pan.
-   */
   const handleWheel = useCallback((e) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();

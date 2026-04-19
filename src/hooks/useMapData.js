@@ -7,8 +7,9 @@ import {
   deserialiseMap,
 } from '../data/mapSchema.js';
 import { hexKey } from '../utils/hex.js';
+import { mergeStyle } from '../utils/styleUtils.js';
 
-const AUTOSAVE_KEY = 'hexmap-autosave';
+const AUTOSAVE_KEY      = 'hexmap-autosave';
 const AUTOSAVE_DELAY_MS = 1000;
 
 export function useMapData() {
@@ -33,18 +34,12 @@ export function useMapData() {
 
   // ── Tile operations ───────────────────────────────────────────────────────
 
-  /**
-   * Place a tile. For custom tiles, pass customColor in tileData.
-   * @param {number} q
-   * @param {number} r
-   * @param {string} tileType
-   * @param {object} [extraData] — e.g. { customColor: '#ff0000' }
-   */
   const placeTile = useCallback((q, r, tileType, extraData = {}) => {
     const key = hexKey(q, r);
     setMapDoc(prev => {
       const tiles = new Map(prev.tiles);
       tiles.set(key, { type: tileType, ...extraData });
+      // Auto-expand when painting near the boundary
       const { width, height } = prev.dimensions;
       const halfW = width / 2;
       const halfH = height / 2;
@@ -122,13 +117,7 @@ export function useMapData() {
     setMapDoc(prev => ({
       ...prev,
       roads: prev.roads.map(r =>
-        r.id !== id ? r : {
-          ...r,
-          style: {
-            ...r.style, ...changes,
-            spline: changes.spline ? { ...r.style.spline, ...changes.spline } : r.style.spline,
-          },
-        }
+        r.id !== id ? r : { ...r, style: mergeStyle(r.style, changes) }
       ),
     }));
   }, []);
@@ -137,14 +126,7 @@ export function useMapData() {
     setMapDoc(prev => ({
       ...prev,
       rivers: prev.rivers.map(r =>
-        r.id !== id ? r : {
-          ...r,
-          style: {
-            ...r.style, ...changes,
-            spline: changes.spline ? { ...r.style.spline, ...changes.spline } : r.style.spline,
-            meander: changes.meander ? { ...r.style.meander, ...changes.meander } : r.style.meander,
-          },
-        }
+        r.id !== id ? r : { ...r, style: mergeStyle(r.style, changes) }
       ),
     }));
   }, []);
@@ -168,8 +150,8 @@ export function useMapData() {
   const saveToFile = useCallback(() => {
     const data = serialiseMap(mapDoc);
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
     a.href = url;
     a.download = `hexmap-${Date.now()}.json`;
     a.click();

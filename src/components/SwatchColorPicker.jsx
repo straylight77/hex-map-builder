@@ -1,66 +1,17 @@
-// ---------------------------------------------------------------------------
-// SwatchColorPicker — reusable swatch + custom color picker
-//
-// Usage:
-//   <SwatchColorPicker swatches={ROAD_SWATCHES} value={color} onChange={setColor} />
-//
-// ---------------------------------------------------------------------------
-//
-// ══ CONFIGURING SWATCHES ════════════════════════════════════════════════════
-//
-// Swatches are defined as arrays of { label, value } objects.
-// Each tool's swatch list lives in the SWATCH_PRESETS object below.
-// The FIRST entry in each array becomes the default color for that tool
-// (set in useTools.js as the initial state for each style's color field).
-//
-// To ADD a swatch:    append { label: 'My Color', value: '#aabbcc' }
-// To REMOVE a swatch: delete the entry
-// To CHANGE a color:  edit the `value` hex string
-// To REORDER:         move the entry; the first entry is still the default
-//
-// ════════════════════════════════════════════════════════════════════════════
+/**
+ * SwatchColorPicker — reusable swatch + custom color picker.
+ *
+ * Palette data lives in src/data/swatches.js — edit there to add/remove colors.
+ * This file re-exports the named palettes so existing import sites don't break.
+ */
 
-// ── Swatch palettes ──────────────────────────────────────────────────────────
-// These are the color lists shown in each tool's panel.
-// Edit here to add / remove / reorder swatches.
-
-export const TILE_SWATCHES = [
-  { label: 'Grey',          value: '#b3b3b3' },   // "neutral", default
-  { label: 'Red',           value: '#FF6666' },   // "danger"
-  { label: 'Yellow',        value: '#ffde66' },   // "warning"
-  { label: 'Plains Green',  value: '#B4F157' },   // terrain.js: plains / farmland
-  { label: 'Forest Green',  value: '#4CAF50' },   // terrain.js: forest
-  { label: 'Hills Brown',   value: '#E8D4B8' },   // terrain.js: hills
-  { label: 'Swamp Grey',    value: '#bad4ab' },   // terrain.js: swamp
-];
-
-export const ROAD_SWATCHES = [
-  { label: 'Light Brown',   value: '#c4a882' },   // default
-  { label: 'Dark Brown',    value: '#8B7355' },   // original default
-  { label: 'Black',         value: '#222222' },
-  { label: 'Light Grey',    value: '#aaaaaa' },
-  { label: 'Red',           value: '#bb2222' },
-];
-
-export const RIVER_SWATCHES = [
-  { label: 'Shallow Water', value: '#ADE1F9' },   // terrain.js: shallow-water
-  { label: 'Water',         value: '#73A9D7' },   // terrain.js: water
-  { label: 'Deep Water',    value: '#4A6B8C' },   // terrain.js: deep-water
-  { label: 'Lava Flow',     value: '#e15b5b' }, 
-];
-
-export const FEATURE_SWATCHES = [
-  { label: 'Black',       value: '#000000' },   // default
-  { label: 'Red',         value: '#bb2222' },
-  { label: 'Green',       value: '#2e6930' },
-  { label: 'Blue',        value: '#507696' },
-  { label: 'Brown',       value: '#b09673' },
-  { label: 'Grey-Green',  value: '#6c7466' },
-  { label: 'Grey',        value: '#cccccc' },
-];
-
-
-// ── Component ────────────────────────────────────────────────────────────────
+// Re-export palettes so components that previously imported from here still work
+export {
+  TILE_SWATCHES,
+  ROAD_SWATCHES,
+  RIVER_SWATCHES,
+  FEATURE_SWATCHES,
+} from '../data/swatches.js';
 
 /**
  * @param {{
@@ -93,7 +44,6 @@ export function SwatchColorPicker({ swatches, value, onChange, label = 'Color' }
           />
         ))}
 
-        {/* Custom color — wider rectangle so it's easy to click */}
         <input
           type="color"
           value={value}

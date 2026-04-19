@@ -1,14 +1,10 @@
 import { Pencil, MousePointer2, Eraser } from 'lucide-react';
-import { TERRAIN_TILES } from '../data/terrain.js';
+import { ORDERED_TILES } from '../data/terrain.js';
 import { TilePreview } from './TilePreview.jsx';
 import { SwatchColorPicker, TILE_SWATCHES } from './SwatchColorPicker.jsx';
 
 export const PANEL_WIDTH = 268;
 const GRID_COLUMNS = 2;
-
-const CUSTOM_TILE  = TERRAIN_TILES.find(t => t.isCustom);
-const OTHER_TILES  = TERRAIN_TILES.filter(t => !t.isCustom);
-export const ORDERED_TILES = CUSTOM_TILE ? [CUSTOM_TILE, ...OTHER_TILES] : [...TERRAIN_TILES];
 
 const MODES = [
   { id: 'draw',   icon: <Pencil size={14} />,        label: 'Draw'   },
@@ -19,7 +15,9 @@ const MODES = [
 function modeHint(tileToolMode, hasSelection) {
   if (tileToolMode === 'draw')   return 'Click or drag to paint tiles.';
   if (tileToolMode === 'erase')  return 'Click or drag to erase tiles.';
-  if (tileToolMode === 'select') return hasSelection ? 'Hex selected — pick a new tile below.' : 'Click a painted hex to select it.';
+  if (tileToolMode === 'select') return hasSelection
+    ? 'Hex selected — pick a new tile below.'
+    : 'Click a painted hex to select it.';
   return null;
 }
 
@@ -28,8 +26,6 @@ export function TileLibrary({
   onSetTileMode,
   selectedTile,
   onSelectTile,
-  isErasing,
-  onToggleErase,
   customTileColor,
   onSetCustomTileColor,
   selectedHex,
@@ -62,7 +58,7 @@ export function TileLibrary({
         {/* Draw / Select / Erase */}
         <div className="px-3 pt-2 flex gap-1.5 flex-shrink-0">
           {MODES.map(({ id, icon, label }) => {
-            const isActive = tileToolMode === id;
+            const isActive   = tileToolMode === id;
             const isEraseBtn = id === 'erase';
             return (
               <button
@@ -198,9 +194,7 @@ export function TileLibrary({
           </div>
         )}
 
-        {/* Erase mode: spacer */}
         {tileToolMode === 'erase' && <div className="flex-1" />}
-
       </div>
     </div>
   );
