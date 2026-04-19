@@ -54,12 +54,7 @@ function perp(a, b, amount) {
 
 /**
  * Inject `count` evenly-spaced intermediate points between each pair of
- * pixel points. This gives midpoint displacement more raw material to work
- * with, producing consistent waviness even across long sparse segments.
- *
- * @param {Array<{x,y}>} pts
- * @param {number} count  extra points per segment (0 = no injection)
- * @returns {Array<{x,y}>}
+ * pixel points.
  */
 function injectIntermediatePoints(pts, count) {
   if (count <= 0) return pts;
@@ -81,14 +76,6 @@ function injectIntermediatePoints(pts, count) {
 
 /**
  * Recursively apply midpoint displacement to an array of pixel points.
- * Each recursion level halves the scale of the displacement, producing
- * organic variation at multiple scales (large bends + small wiggles).
- *
- * @param {Array<{x,y}>} pts
- * @param {number} amplitude  max offset as a fraction of segment length
- * @param {number} depth      recursion levels remaining
- * @param {number} level      current recursion level (used for seed variation)
- * @returns {Array<{x,y}>}
  */
 function midpointDisplace(pts, amplitude, depth, level = 0) {
   if (depth === 0 || pts.length < 2) return pts;
@@ -101,10 +88,7 @@ function midpointDisplace(pts, amplitude, depth, level = 0) {
     const dx = b.x - a.x, dy = b.y - a.y;
     const segLen = Math.sqrt(dx * dx + dy * dy);
 
-    // Scale decreases with each recursion level for multi-scale variation
     const scale = amplitude * segLen * Math.pow(0.55, 3 - depth);
-
-    // Deterministic offset seeded from geometry + recursion level
     const rand = seededRand(a.x + level * 1000, a.y + i * 317 + level * 500);
     const offset = rand * scale;
 
@@ -117,29 +101,18 @@ function midpointDisplace(pts, amplitude, depth, level = 0) {
 
 /**
  * Apply meander to a pixel point array.
- * Returns a new array with injected + displaced points ready for spline rendering.
- *
- * @param {Array<{x,y}>} pixels
- * @param {{ enabled:boolean, amplitude:number, depth:number, points:number }} meander
- * @returns {Array<{x,y}>}
  */
 function applyMeander(pixels, meander) {
-  if (!meander?.enabled || pixels.length < 2) return pixels;
+  if (!meander || pixels.length < 2) return pixels;
 
-  // 1. Inject intermediate points between each waypoint pair
-  const injected = injectIntermediatePoints(pixels, meander.points ?? 3);
-
-  // 2. Apply recursive midpoint displacement
-  return midpointDisplace(injected, meander.amplitude ?? 0.25, meander.depth ?? 2);
+  const injected = injectIntermediatePoints(pixels, meander.points ?? 1);
+  return midpointDisplace(injected, meander.amplitude ?? 0.70, meander.depth ?? 3);
 }
 
 // ---------------------------------------------------------------------------
 // Colour helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Parse a CSS hex colour (#rrggbb or #rgb) and return { r, g, b }.
- */
 function parseHex(hex) {
   const h = hex.replace('#', '');
   if (h.length === 3) {
@@ -156,10 +129,6 @@ function parseHex(hex) {
   };
 }
 
-/**
- * Darken a hex colour by multiplying each channel by `factor` (0–1).
- * Returns a CSS hex string.
- */
 function darkenColor(hex, factor = 0.62) {
   try {
     const { r, g, b } = parseHex(hex);
@@ -171,7 +140,7 @@ function darkenColor(hex, factor = 0.62) {
 }
 
 // ---------------------------------------------------------------------------
-// Stroke helper — draws the current ctx path with given style params
+// Stroke helper
 // ---------------------------------------------------------------------------
 
 function strokePath(ctx, pixels, spline, tension, width, color, dash, cap = 'square') {
@@ -194,13 +163,15 @@ function strokePath(ctx, pixels, spline, tension, width, color, dash, cap = 'squ
 /**
  * Draw a committed road or river path.
  *
- * Rivers get a thin darker border drawn first (wider pass), then the
- * fill colour on top. Roads draw a single pass only.
- * Meander is applied once and shared by both passes so they align exactly.
+ * Rivers choose their rendering based on `style.algorithm`:
+ *   'smooth'  — Catmull-Rom spline only, no meander
+ *   'meander' — midpoint displacement + spline on top (default)
+ *
+ * Both passes (border + fill) share the same displaced points so they align exactly.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {Array<{q:number, r:number}>} hexPath
- * @param {{ width, color, dash, spline, meander? }} style
+ * @param {{ width, color, dash, spline, meander?, algorithm? }} style
  * @param {number} [hexSize]
  */
 export function drawPath(ctx, hexPath, style, hexSize) {
@@ -208,13 +179,21 @@ export function drawPath(ctx, hexPath, style, hexSize) {
 
   let pixels = hexPath.map(({ q, r }) => hexToPixel(q, r, hexSize));
 
-  if (style.meander?.enabled) {
+  const isRiver = !!style.meander; // rivers always carry a meander object
+  const algorithm = style.algorithm ?? 'meander';
+
+  // Apply meander only when it's a river AND the algorithm is 'meander'
+  if (isRiver && algorithm === 'meander') {
     pixels = applyMeander(pixels, style.meander);
   }
 
-  const { color, width, dash, spline } = style;
+  // For smooth rivers, force spline on so they always curve nicely
+  const spline = isRiver && algorithm === 'smooth'
+    ? { enabled: true, tension: style.spline?.tension ?? 0.6 }
+    : style.spline;
+
+  const { color, width, dash } = style;
   const tension = spline?.tension ?? 0.5;
-  const isRiver = !!style.meander; // rivers always carry a meander object
 
   ctx.save();
 
@@ -231,8 +210,8 @@ export function drawPath(ctx, hexPath, style, hexSize) {
 
 /**
  * Draw an in-progress (uncommitted) path preview.
- * Meander is intentionally NOT applied to the preview — the user needs to
- * see the clean waypoint structure while they are still placing points.
+ * Neither meander nor smoothing is applied — the user needs to see the clean
+ * waypoint structure while still placing points.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {Array<{q:number, r:number}>} hexPath

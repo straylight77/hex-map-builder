@@ -12,9 +12,9 @@ export const DEFAULT_SPLINE = {
 
 export const DEFAULT_MEANDER = {
   enabled: true,
-  amplitude: 0.25,   // deviation as fraction of segment length
-  depth: 2,          // fractal recursion levels (1-4)
-  points: 3,         // extra points injected per waypoint segment before displacement
+  amplitude: 0.70,   // deviation as fraction of segment length
+  depth: 3,          // fractal recursion levels (1-5)
+  points: 1,         // extra points injected per waypoint segment before displacement
 };
 
 export const DEFAULT_ROAD_STYLE = {
@@ -29,6 +29,7 @@ export const DEFAULT_RIVER_STYLE = {
   width: 5,
   color: '#ADE1F9',   // matches RIVER_SWATCHES[0] (shallow water) in SwatchColorPicker.jsx
   dash: [],
+  algorithm: 'meander', // 'smooth' | 'meander'
   spline: { ...DEFAULT_SPLINE, tension: 0.6 },
   meander: { ...DEFAULT_MEANDER },
 };
@@ -99,6 +100,7 @@ export function deserialiseMap(raw) {
     style: {
       ...DEFAULT_RIVER_STYLE,
       ...r.style,
+      algorithm: r.style?.algorithm ?? 'meander',
       meander: { ...DEFAULT_MEANDER, ...(r.style?.meander ?? {}) },
     },
   }));
