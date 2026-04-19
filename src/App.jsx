@@ -118,6 +118,13 @@ export default function App() {
     feature.clearSelection();
   }, [feature, mapData]);
 
+  const handleSelectFeature = useCallback((id) => {
+    feature.setSelectedId(id);
+    if (feature.mode === 'select' && feature.selectedHex) {
+      mapData.updateFeature(feature.selectedHex.q, feature.selectedHex.r, { id });
+    }
+  }, [feature, mapData]);
+
   const handleFeatureSetColor = useCallback((color) => {
     feature.setColor(color);
     if (feature.mode === 'select' && feature.selectedHex) {
@@ -421,7 +428,7 @@ export default function App() {
             featureToolMode={feature.mode}
             onSetFeatureMode={feature.setMode}
             selectedFeatureId={feature.selectedId}
-            onSelectFeature={feature.setSelectedId}
+            onSelectFeature={handleSelectFeature}
             selectedFeatureHex={feature.selectedHex}
             selectedFeatureData={selectedFeatureData}
             onDeleteSelected={handleDeleteSelectedFeature}

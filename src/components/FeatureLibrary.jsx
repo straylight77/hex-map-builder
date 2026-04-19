@@ -192,8 +192,8 @@ export function FeatureLibrary({
           </div>
         )}
 
-        {/* Feature gallery — draw mode only */}
-        {featureToolMode === 'draw' && (
+        {/* Feature gallery — draw mode and select mode */}
+        {(featureToolMode === 'draw' || featureToolMode === 'select') && (
           <div className="flex-1 overflow-y-auto p-2">
             {FEATURES_BY_CATEGORY.map(({ category, features }) => (
               <div key={category} className="mb-3">
@@ -210,12 +210,12 @@ export function FeatureLibrary({
                       onClick={() => onSelectFeature(f.id)}
                       title={f.name}
                       className={`flex flex-col items-center p-1 rounded border-2 transition-all ${
-                        selectedFeatureId === f.id
+                        displayFeatureId === f.id
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-400'
                       }`}
                     >
-                      <FeaturePreview feature={f} color={featureColor} />
+                      <FeaturePreview feature={f} color={displayColor} />
                       <span className="text-xs mt-0.5 text-center leading-tight text-gray-600">
                         {f.name}
                       </span>
@@ -227,7 +227,7 @@ export function FeatureLibrary({
           </div>
         )}
 
-        {(featureToolMode === 'select' || featureToolMode === 'erase') && <div className="flex-1" />}
+        {featureToolMode === 'erase' && <div className="flex-1" />}
       </div>
     </div>
   );
