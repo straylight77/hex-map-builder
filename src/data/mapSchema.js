@@ -21,15 +21,15 @@ export const DEFAULT_ROAD_STYLE = {
   width: 4,
   color: '#c4a882',   // matches ROAD_SWATCHES[0] in SwatchColorPicker.jsx
   dash: [],
+  algorithm: 'smooth', // 'none' | 'smooth'
   spline: { ...DEFAULT_SPLINE },
-  // Roads do not meander
 };
 
 export const DEFAULT_RIVER_STYLE = {
   width: 5,
   color: '#ADE1F9',   // matches RIVER_SWATCHES[0] (shallow water) in SwatchColorPicker.jsx
   dash: [],
-  algorithm: 'meander', // 'smooth' | 'meander'
+  algorithm: 'meander', // 'none' | 'smooth' | 'meander'
   spline: { ...DEFAULT_SPLINE, tension: 0.6 },
   meander: { ...DEFAULT_MEANDER },
 };
@@ -94,7 +94,17 @@ export function deserialiseMap(raw) {
     tilesEntries = [];
   }
 
-  // Migrate rivers that lack a meander field (saved before this feature)
+  // Migrate roads — add algorithm if missing (saved before this feature)
+  const roads = (raw.roads ?? []).map(r => ({
+    ...r,
+    style: {
+      ...DEFAULT_ROAD_STYLE,
+      ...r.style,
+      algorithm: r.style?.algorithm ?? 'smooth',
+    },
+  }));
+
+  // Migrate rivers — add algorithm if missing, ensure meander present
   const rivers = (raw.rivers ?? []).map(r => ({
     ...r,
     style: {
@@ -110,7 +120,7 @@ export function deserialiseMap(raw) {
     dimensions: raw.dimensions ?? { width: 20, height: 20 },
     tiles: new Map(tilesEntries),
     features: new Map(Array.isArray(raw.features) ? raw.features : []),
-    roads: raw.roads ?? [],
+    roads,
     rivers,
   };
 }

@@ -27,10 +27,6 @@ function buildSplinePath(ctx, points, tension) {
 // Meander — midpoint displacement with pre-injected intermediate points
 // ---------------------------------------------------------------------------
 
-/**
- * Deterministic pseudo-random number in [-0.5, 0.5] seeded from two numbers.
- * Using the same seed for the same path always produces the same river shape.
- */
 function seededRand(a, b) {
   let s = Math.round(a * 1000) * 1664525 + Math.round(b * 1000) * 1013904223;
   s = (s ^ (s >>> 16)) & 0xffffffff;
@@ -39,9 +35,6 @@ function seededRand(a, b) {
   return ((s >>> 0) / 0xffffffff) - 0.5;
 }
 
-/**
- * Offset a point perpendicular to the direction AB by `amount` pixels.
- */
 function perp(a, b, amount) {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
@@ -52,10 +45,6 @@ function perp(a, b, amount) {
   };
 }
 
-/**
- * Inject `count` evenly-spaced intermediate points between each pair of
- * pixel points.
- */
 function injectIntermediatePoints(pts, count) {
   if (count <= 0) return pts;
   const result = [];
@@ -74,9 +63,6 @@ function injectIntermediatePoints(pts, count) {
   return result;
 }
 
-/**
- * Recursively apply midpoint displacement to an array of pixel points.
- */
 function midpointDisplace(pts, amplitude, depth, level = 0) {
   if (depth === 0 || pts.length < 2) return pts;
 
@@ -99,12 +85,8 @@ function midpointDisplace(pts, amplitude, depth, level = 0) {
   return midpointDisplace(result, amplitude, depth - 1, level + 1);
 }
 
-/**
- * Apply meander to a pixel point array.
- */
 function applyMeander(pixels, meander) {
   if (!meander || pixels.length < 2) return pixels;
-
   const injected = injectIntermediatePoints(pixels, meander.points ?? 1);
   return midpointDisplace(injected, meander.amplitude ?? 0.70, meander.depth ?? 3);
 }
@@ -143,7 +125,7 @@ function darkenColor(hex, factor = 0.62) {
 // Stroke helper
 // ---------------------------------------------------------------------------
 
-function strokePath(ctx, pixels, spline, tension, width, color, dash, cap = 'square') {
+function strokePath(ctx, pixels, useSpline, tension, width, color, dash, cap = 'square') {
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
   ctx.lineCap = cap;
@@ -151,7 +133,7 @@ function strokePath(ctx, pixels, spline, tension, width, color, dash, cap = 'squ
   ctx.setLineDash(Array.isArray(dash) ? dash : []);
 
   ctx.beginPath();
-  if (spline?.enabled && pixels.length > 2) {
+  if (useSpline && pixels.length > 2) {
     buildSplinePath(ctx, pixels, tension ?? 0.5);
   } else {
     ctx.moveTo(pixels[0].x, pixels[0].y);
@@ -163,11 +145,12 @@ function strokePath(ctx, pixels, spline, tension, width, color, dash, cap = 'squ
 /**
  * Draw a committed road or river path.
  *
- * Rivers choose their rendering based on `style.algorithm`:
- *   'smooth'  — Catmull-Rom spline only, no meander
- *   'meander' — midpoint displacement + spline on top (default)
+ * algorithm:
+ *   'none'    — straight lines between waypoints, no processing
+ *   'smooth'  — Catmull-Rom spline only
+ *   'meander' — midpoint displacement + spline (rivers only)
  *
- * Both passes (border + fill) share the same displaced points so they align exactly.
+ * Rivers get a darker border pass underneath the fill pass.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {Array<{q:number, r:number}>} hexPath
@@ -179,39 +162,36 @@ export function drawPath(ctx, hexPath, style, hexSize) {
 
   let pixels = hexPath.map(({ q, r }) => hexToPixel(q, r, hexSize));
 
-  const isRiver = !!style.meander; // rivers always carry a meander object
-  const algorithm = style.algorithm ?? 'meander';
+  const isRiver   = !!style.meander; // rivers always carry a meander object
+  const algorithm = style.algorithm ?? (isRiver ? 'meander' : 'smooth');
 
-  // Apply meander only when it's a river AND the algorithm is 'meander'
-  if (isRiver && algorithm === 'meander') {
+  // Apply displacement for meander algorithm (rivers only)
+  if (algorithm === 'meander') {
     pixels = applyMeander(pixels, style.meander);
   }
 
-  // For smooth rivers, force spline on so they always curve nicely
-  const spline = isRiver && algorithm === 'smooth'
-    ? { enabled: true, tension: style.spline?.tension ?? 0.6 }
-    : style.spline;
+  // Spline is used for 'smooth' and 'meander'; straight lines for 'none'
+  const useSpline = algorithm === 'smooth' || algorithm === 'meander';
+  const tension   = style.spline?.tension ?? (isRiver ? 0.6 : 0.5);
 
   const { color, width, dash } = style;
-  const tension = spline?.tension ?? 0.5;
 
   ctx.save();
 
   if (isRiver) {
     // Border pass — darker colour, wider by 2px on each side
-    strokePath(ctx, pixels, spline, tension, width + 4, darkenColor(color, 0.58), dash);
+    strokePath(ctx, pixels, useSpline, tension, width + 4, darkenColor(color, 0.58), dash);
   }
 
   // Fill pass
-  strokePath(ctx, pixels, spline, tension, width, color, dash);
+  strokePath(ctx, pixels, useSpline, tension, width, color, dash);
 
   ctx.restore();
 }
 
 /**
  * Draw an in-progress (uncommitted) path preview.
- * Neither meander nor smoothing is applied — the user needs to see the clean
- * waypoint structure while still placing points.
+ * No algorithm processing is applied — show raw waypoint positions.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {Array<{q:number, r:number}>} hexPath
@@ -231,15 +211,11 @@ export function drawPathPreview(ctx, hexPath, style, hexSize) {
   ctx.setLineDash([12, 8]);
 
   ctx.beginPath();
-  if (style.spline?.enabled && pixels.length > 2) {
-    buildSplinePath(ctx, pixels, style.spline.tension ?? 0.5);
-  } else {
-    ctx.moveTo(pixels[0].x, pixels[0].y);
-    for (let i = 1; i < pixels.length; i++) ctx.lineTo(pixels[i].x, pixels[i].y);
-  }
+  ctx.moveTo(pixels[0].x, pixels[0].y);
+  for (let i = 1; i < pixels.length; i++) ctx.lineTo(pixels[i].x, pixels[i].y);
   ctx.stroke();
 
-  // Waypoint dots — show clean hex-center positions so user can see structure
+  // Waypoint dots
   ctx.setLineDash([]);
   ctx.globalAlpha = 0.85;
   ctx.fillStyle = style.color;

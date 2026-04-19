@@ -15,6 +15,17 @@ const MODES = [
   { id: 'erase',  icon: <Eraser size={14} />,         label: 'Erase'  },
 ];
 
+const RIVER_ALGORITHMS = [
+  { id: 'none',    label: 'None'    },
+  { id: 'smooth',  label: 'Smooth'  },
+  { id: 'meander', label: 'Meander' },
+];
+
+const ROAD_ALGORITHMS = [
+  { id: 'none',   label: 'None'   },
+  { id: 'smooth', label: 'Smooth' },
+];
+
 function modeHint(toolLabel, pathToolMode, isDrawingPath, activePath, hasSelection) {
   const tool = toolLabel.toLowerCase();
   if (pathToolMode === 'draw') {
@@ -54,12 +65,13 @@ export function PathLibrary({
   const editUpdater = pathToolMode === 'select' && hasSelection ? onUpdateSelectedStyle : onUpdateStyle;
 
   const meander   = editStyle?.meander;
-  const algorithm = editStyle?.algorithm ?? 'meander'; // 'smooth' | 'meander'
+  const algorithm = editStyle?.algorithm ?? (isRiver ? 'meander' : 'none');
 
-  const showAlgorithmControls = isRiver && (pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection));
+  const showStyleControls = pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection);
 
-  const swatches = isRiver ? RIVER_SWATCHES : ROAD_SWATCHES;
-  const hint     = modeHint(toolLabel, pathToolMode, isDrawingPath, activePath, hasSelection);
+  const algorithms = isRiver ? RIVER_ALGORITHMS : ROAD_ALGORITHMS;
+  const swatches   = isRiver ? RIVER_SWATCHES : ROAD_SWATCHES;
+  const hint       = modeHint(toolLabel, pathToolMode, isDrawingPath, activePath, hasSelection);
 
   return (
     <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
@@ -126,7 +138,7 @@ export function PathLibrary({
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
 
-          {editStyle && (pathToolMode === 'draw' || (pathToolMode === 'select' && hasSelection)) && (
+          {editStyle && showStyleControls && (
             <>
               {/* Color */}
               <SwatchColorPicker
@@ -171,134 +183,94 @@ export function PathLibrary({
                 </div>
               </div>
 
-              {/* Path Algorithm (rivers only) */}
-              {showAlgorithmControls && (
-                <div className="border-t border-gray-200 pt-3 space-y-3">
-                  <span className="text-sm font-semibold text-gray-700">Path Algorithm</span>
+              {/* Path Algorithm */}
+              <div className="border-t border-gray-200 pt-3 space-y-3">
+                <span className="text-sm font-semibold text-gray-700">Path Algorithm</span>
 
-                  <div className="flex gap-1 mt-1">
-                    {[
-                      { id: 'smooth',  label: 'Smooth'  },
-                      { id: 'meander', label: 'Meander' },
-                    ].map(({ id, label }) => (
-                      <button
-                        key={id}
-                        onClick={() => editUpdater({ algorithm: id })}
-                        className={`flex-1 text-xs px-2 py-1.5 rounded border font-medium transition-colors ${
-                          algorithm === id
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gray-300 text-gray-600 hover:border-gray-400'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Smooth controls */}
-                  {algorithm === 'smooth' && (
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Tension: {(editStyle.spline?.tension ?? 0.5).toFixed(2)}
-                      </label>
-                      <input
-                        type="range" min="0" max="1" step="0.05"
-                        value={editStyle.spline?.tension ?? 0.5}
-                        onChange={e => editUpdater({ spline: { tension: parseFloat(e.target.value) } })}
-                        className="w-full"
-                      />
-                      <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                        <span>Sharp</span><span>Gentle</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Meander controls */}
-                  {algorithm === 'meander' && (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Amplitude: {(meander?.amplitude ?? 0.70).toFixed(2)}
-                        </label>
-                        <input
-                          type="range" min="0" max="1" step="0.05"
-                          value={meander?.amplitude ?? 0.70}
-                          onChange={e => editUpdater({ meander: { amplitude: parseFloat(e.target.value) } })}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                          <span>Subtle</span><span>Wild</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Fractal Depth: {meander?.depth ?? 3}
-                        </label>
-                        <input
-                          type="range" min="1" max="5" step="1"
-                          value={meander?.depth ?? 3}
-                          onChange={e => editUpdater({ meander: { depth: parseInt(e.target.value) } })}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                          <span>Simple</span><span>Complex</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Extra Points: {meander?.points ?? 1}
-                        </label>
-                        <input
-                          type="range" min="0" max="3" step="1"
-                          value={meander?.points ?? 1}
-                          onChange={e => editUpdater({ meander: { points: parseInt(e.target.value) } })}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                          <span>Sparse</span><span>Dense</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Path Smoothing (roads only) */}
-              {!isRiver && (
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-sm font-semibold text-gray-700">Path Smoothing</label>
+                <div className="flex gap-1 mt-1">
+                  {algorithms.map(({ id, label }) => (
                     <button
-                      onClick={() => editUpdater({ spline: { enabled: !editStyle.spline?.enabled } })}
-                      className={`text-xs px-2 py-1 rounded border ${
-                        editStyle.spline?.enabled
+                      key={id}
+                      onClick={() => editUpdater({ algorithm: id })}
+                      className={`flex-1 text-xs px-2 py-1.5 rounded border font-medium transition-colors ${
+                        algorithm === id
                           ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-300 text-gray-500 hover:border-gray-400'
+                          : 'border-gray-300 text-gray-600 hover:border-gray-400'
                       }`}
                     >
-                      {editStyle.spline?.enabled ? '✓ On' : 'Off'}
+                      {label}
                     </button>
+                  ))}
+                </div>
+
+                {/* Smooth controls */}
+                {algorithm === 'smooth' && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Tension: {(editStyle.spline?.tension ?? 0.5).toFixed(2)}
+                    </label>
+                    <input
+                      type="range" min="0" max="1" step="0.05"
+                      value={editStyle.spline?.tension ?? 0.5}
+                      onChange={e => editUpdater({ spline: { tension: parseFloat(e.target.value) } })}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                      <span>Sharp</span><span>Gentle</span>
+                    </div>
                   </div>
-                  {editStyle.spline?.enabled && (
-                    <div className="mt-2">
+                )}
+
+                {/* Meander controls (rivers only) */}
+                {algorithm === 'meander' && (
+                  <div className="space-y-3">
+                    <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Tension: {(editStyle.spline.tension ?? 0.5).toFixed(2)}
+                        Amplitude: {(meander?.amplitude ?? 0.70).toFixed(2)}
                       </label>
                       <input
                         type="range" min="0" max="1" step="0.05"
-                        value={editStyle.spline.tension ?? 0.5}
-                        onChange={e => editUpdater({ spline: { tension: parseFloat(e.target.value) } })}
+                        value={meander?.amplitude ?? 0.70}
+                        onChange={e => editUpdater({ meander: { amplitude: parseFloat(e.target.value) } })}
                         className="w-full"
                       />
                       <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                        <span>Sharp</span><span>Gentle</span>
+                        <span>Subtle</span><span>Wild</span>
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Fractal Depth: {meander?.depth ?? 3}
+                      </label>
+                      <input
+                        type="range" min="1" max="5" step="1"
+                        value={meander?.depth ?? 3}
+                        onChange={e => editUpdater({ meander: { depth: parseInt(e.target.value) } })}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                        <span>Simple</span><span>Complex</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Extra Points: {meander?.points ?? 1}
+                      </label>
+                      <input
+                        type="range" min="0" max="3" step="1"
+                        value={meander?.points ?? 1}
+                        onChange={e => editUpdater({ meander: { points: parseInt(e.target.value) } })}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                        <span>Sparse</span><span>Dense</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           )}
 
