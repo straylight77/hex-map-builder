@@ -97,13 +97,8 @@ export function TileLibrary({
     <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
       <div className="bg-white border-l border-gray-300 h-full flex flex-col">
 
-        {/* Header */}
-        <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
-          <span className="text-sm font-semibold text-gray-700">Tiles</span>
-        </div>
-
         {/* Draw / Select / Erase */}
-        <div className="px-3 pt-2 flex gap-1.5 flex-shrink-0">
+        <div className="px-3 pt-3 pb-2 flex gap-1.5 flex-shrink-0">
           {MODES.map(({ id, icon, label }) => {
             const isActive   = tileToolMode === id;
             const isEraseBtn = id === 'erase';
@@ -131,28 +126,16 @@ export function TileLibrary({
 
         {/* One-liner hint */}
         {hint && (
-          <p className={`px-3 pt-1.5 pb-2 text-xs border-b border-gray-200 ${
+          <p className={`px-3 pb-2 text-xs border-b border-gray-200 ${
             tileToolMode === 'erase' ? 'text-red-500' : 'text-gray-500'
           }`}>
             {hint}
           </p>
         )}
 
-        {/* Custom color */}
-        {showPicker && (
-          <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
-            <SwatchColorPicker
-              swatches={TILE_SWATCHES}
-              value={activeCustomColor}
-              onChange={color => { onSetCustomTileColor(color); onSelectTile('custom'); }}
-              label="Custom tile color"
-            />
-          </div>
-        )}
-
-        {/* Select mode: delete button */}
+        {/* Select mode: delete button first, then color swatches */}
         {tileToolMode === 'select' && (
-          <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
+          <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 space-y-2">
             <button
               onClick={onDeleteSelected}
               disabled={!hasSelection}
@@ -164,13 +147,32 @@ export function TileLibrary({
             >
               Delete Tile
             </button>
+            {hasSelection && (
+              <SwatchColorPicker
+                swatches={TILE_SWATCHES}
+                value={activeCustomColor}
+                onChange={color => { onSetCustomTileColor(color); onSelectTile('custom'); }}
+                label="Custom tile color"
+              />
+            )}
+          </div>
+        )}
+
+        {/* Draw mode: color swatches */}
+        {tileToolMode === 'draw' && (
+          <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
+            <SwatchColorPicker
+              swatches={TILE_SWATCHES}
+              value={activeCustomColor}
+              onChange={color => { onSetCustomTileColor(color); onSelectTile('custom'); }}
+              label="Custom tile color"
+            />
           </div>
         )}
 
         {/* View toggle + tile picker */}
         {showPicker && (
           <>
-            {/* View toggle bar — sits directly above the list/grid */}
             <div className="px-3 py-1.5 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
               <span className="text-xs font-medium text-gray-500">Tiles</span>
               <div className="flex gap-0.5">

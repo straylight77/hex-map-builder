@@ -120,13 +120,8 @@ export function FeatureLibrary({
     <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
       <div className="bg-white border-l border-gray-300 h-full flex flex-col">
 
-        {/* Header */}
-        <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
-          <span className="text-sm font-semibold text-gray-700">Features</span>
-        </div>
-
         {/* Draw / Select / Erase */}
-        <div className="px-3 pt-2 flex gap-1.5 flex-shrink-0">
+        <div className="px-3 pt-3 pb-2 flex gap-1.5 flex-shrink-0">
           {MODES.map(({ id, icon, label }) => {
             const isActive   = featureToolMode === id;
             const isEraseBtn = id === 'erase';
@@ -154,7 +149,7 @@ export function FeatureLibrary({
 
         {/* One-liner hint */}
         {hint && (
-          <p className={`px-3 pt-1.5 pb-2 text-xs border-b border-gray-200 ${
+          <p className={`px-3 pb-2 text-xs border-b border-gray-200 ${
             featureToolMode === 'erase' ? 'text-red-500' : 'text-gray-500'
           }`}>
             {hint}
@@ -181,7 +176,6 @@ export function FeatureLibrary({
         {/* Style controls */}
         {showStyleControls && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 space-y-3">
-
             {featureToolMode === 'select' && hasSelection && (
               <p className="text-xs text-blue-600 font-medium">
                 {displayFeature?.name ?? 'Feature'} selected
@@ -233,7 +227,6 @@ export function FeatureLibrary({
         {/* View toggle + feature gallery */}
         {showGallery && (
           <>
-            {/* View toggle bar — sits directly above the list/grid */}
             <div className="px-3 py-1.5 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
               <span className="text-xs font-medium text-gray-500">Features</span>
               <div className="flex gap-0.5">
@@ -250,7 +243,6 @@ export function FeatureLibrary({
                   <span>List</span>
                 </button>
                 <button
-
                   onClick={() => setView('card')}
                   title="Card view"
                   className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors ${
