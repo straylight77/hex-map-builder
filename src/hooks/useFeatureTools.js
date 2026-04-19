@@ -25,8 +25,8 @@ export function useFeatureTools() {
   const selectHex      = useCallback((hex) => setSelectedHex(hex), []);
   const clearSelection  = useCallback(() => setSelectedHex(null), []);
 
-  const reset = useCallback(() => {
-    setModeState('draw');
+  const reset = useCallback((mode) => {
+    if (mode) setModeState(mode);
     setSelectedHex(null);
   }, []);
 

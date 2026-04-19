@@ -68,12 +68,12 @@ export function usePathTools() {
     setRiverStyle(prev => mergeStyle(prev, updates));
   }, []);
 
-  const reset = useCallback(() => {
+  const reset = useCallback((mode) => {
     setActivePath([]);
     setIsDrawing(false);
     setSelectedPathId(null);
     setHoveredPathId(null);
-    setModeState('draw');
+    if (mode) setModeState(mode);
   }, []);
 
   return {
