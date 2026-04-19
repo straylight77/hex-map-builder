@@ -113,7 +113,9 @@ export function FeatureLibrary({
   const displayFeature   = FEATURE_MAP[displayFeatureId];
 
   const hint = modeHint(featureToolMode, hasSelection);
-  const showStyleControls = featureToolMode === 'draw' || featureToolMode === 'select';
+
+  // Show style controls in draw mode always; in select mode only once a feature is selected
+  const showStyleControls = featureToolMode === 'draw' || (featureToolMode === 'select' && hasSelection);
   const showGallery       = featureToolMode === 'draw' || featureToolMode === 'select';
 
   return (
@@ -173,53 +175,64 @@ export function FeatureLibrary({
           </div>
         )}
 
-        {/* Style controls */}
+        {/* Style controls — draw mode always, select mode only when a feature is selected */}
         {showStyleControls && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 space-y-3">
+
             {featureToolMode === 'select' && hasSelection && (
               <p className="text-xs text-blue-600 font-medium">
                 {displayFeature?.name ?? 'Feature'} selected
               </p>
             )}
 
+            {/* Color */}
             <SwatchColorPicker
               swatches={FEATURE_SWATCHES}
               value={displayColor}
               onChange={onSetColor}
             />
 
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Size</label>
-              <div className="flex gap-1">
+            {/* Size + Rotation side by side */}
+            <div className="flex gap-3 items-stretch">
+
+              {/* Size — left half */}
+              <div className="flex-1 flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-600">Size</label>
                 {['small', 'medium', 'large'].map(s => (
-                  <button key={s} onClick={() => onSetSize(s)}
-                    className={`flex-1 text-xs py-1 rounded border capitalize transition-colors ${
+                  <button
+                    key={s}
+                    onClick={() => onSetSize(s)}
+                    className={`w-full text-xs py-1 rounded border capitalize transition-colors ${
                       displaySize === s
                         ? 'bg-blue-500 text-white border-blue-500'
                         : 'border-gray-300 text-gray-600 hover:border-gray-400'
                     }`}
-                  >{s}</button>
+                  >
+                    {s}
+                  </button>
                 ))}
               </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Rotation</label>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => onSetRotation(((displayRotation - 30) + 360) % 360)}
-                  className="flex-1 text-xs py-1 rounded border transition-colors border-gray-300 text-gray-600 hover:border-gray-400"
-                  title="Rotate left 30°"
-                >‹</button>
-                <span className="flex-1 text-center text-xs text-gray-700 font-medium tabular-nums">
-                  {displayRotation}°
-                </span>
-                <button
-                  onClick={() => onSetRotation((displayRotation + 30) % 360)}
-                  className="flex-1 text-xs py-1 rounded border transition-colors border-gray-300 text-gray-600 hover:border-gray-400"
-                  title="Rotate right 30°"
-                >›</button>
+              {/* Rotation — right half */}
+              <div className="flex-1 flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-600">Rotation</label>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => onSetRotation(((displayRotation - 30) + 360) % 360)}
+                    title="Rotate left 30°"
+                    className="flex-1 text-xs py-1 rounded border border-gray-300 text-gray-600 hover:border-gray-400 transition-colors"
+                  >‹</button>
+                  <button
+                    onClick={() => onSetRotation((displayRotation + 30) % 360)}
+                    title="Rotate right 30°"
+                    className="flex-1 text-xs py-1 rounded border border-gray-300 text-gray-600 hover:border-gray-400 transition-colors"
+                  >›</button>
+                </div>
+                <div className="flex-1 flex items-center justify-center rounded border border-gray-200 bg-gray-50">
+                  <span className="text-sm text-gray-700 font-medium tabular-nums">{displayRotation}°</span>
+                </div>
               </div>
+
             </div>
           </div>
         )}
