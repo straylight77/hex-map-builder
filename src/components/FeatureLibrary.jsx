@@ -110,13 +110,10 @@ export function FeatureLibrary({
   const displaySize      = featureToolMode === 'select' && hasSelection ? selectedFeatureData.size     : featureSize;
   const displayRotation  = featureToolMode === 'select' && hasSelection ? selectedFeatureData.rotation : featureRotation;
   const displayFeatureId = featureToolMode === 'select' && hasSelection ? selectedFeatureData.id       : selectedFeatureId;
-  const displayFeature   = FEATURE_MAP[displayFeatureId];
 
   const hint = modeHint(featureToolMode, hasSelection);
-
-  // Show style controls in draw mode always; in select mode only once a feature is selected
   const showStyleControls = featureToolMode === 'draw' || (featureToolMode === 'select' && hasSelection);
-  const showGallery       = featureToolMode === 'draw' || featureToolMode === 'select';
+  const showGallery       = featureToolMode === 'draw' || (featureToolMode === 'select' && hasSelection);
 
   return (
     <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
@@ -149,7 +146,7 @@ export function FeatureLibrary({
           })}
         </div>
 
-        {/* One-liner hint */}
+        {/* Hint */}
         {hint && (
           <p className={`px-3 pb-2 text-xs border-b border-gray-200 ${
             featureToolMode === 'erase' ? 'text-red-500' : 'text-gray-500'
@@ -158,7 +155,7 @@ export function FeatureLibrary({
           </p>
         )}
 
-        {/* Delete selected — only in select mode */}
+        {/* Delete button — select mode only */}
         {featureToolMode === 'select' && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0">
             <button
@@ -175,17 +172,10 @@ export function FeatureLibrary({
           </div>
         )}
 
-        {/* Style controls — draw mode always, select mode only when a feature is selected */}
+        {/* Style controls */}
         {showStyleControls && (
           <div className="px-3 py-2 border-b border-gray-200 flex-shrink-0 space-y-3">
 
-            {featureToolMode === 'select' && hasSelection && (
-              <p className="text-xs text-blue-600 font-medium">
-                {displayFeature?.name ?? 'Feature'} selected
-              </p>
-            )}
-
-            {/* Color */}
             <SwatchColorPicker
               swatches={FEATURE_SWATCHES}
               value={displayColor}
@@ -241,7 +231,7 @@ export function FeatureLibrary({
         {showGallery && (
           <>
             <div className="px-3 py-1.5 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-              <span className="text-xs font-medium text-gray-600">Features</span>
+              <span className="text-xs font-medium text-gray-500">Features</span>
               <div className="flex gap-0.5">
                 <button
                   onClick={() => setView('list')}

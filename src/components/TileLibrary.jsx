@@ -16,7 +16,7 @@ function modeHint(tileToolMode, hasSelection) {
   if (tileToolMode === 'draw')   return 'Click or drag to paint tiles.';
   if (tileToolMode === 'erase')  return 'Click or drag to erase tiles.';
   if (tileToolMode === 'select') return hasSelection
-    ? 'Hex selected — pick a new tile below.'
+    ? 'Tile selected — edit below.'
     : 'Click a painted hex to select it.';
   return null;
 }
@@ -124,7 +124,7 @@ export function TileLibrary({
           })}
         </div>
 
-        {/* One-liner hint */}
+        {/* Hint */}
         {hint && (
           <p className={`px-3 pb-2 text-xs border-b border-gray-200 ${
             tileToolMode === 'erase' ? 'text-red-500' : 'text-gray-500'
@@ -174,7 +174,7 @@ export function TileLibrary({
         {showPicker && (
           <>
             <div className="px-3 py-1.5 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-              <span className="text-xs font-medium text-gray-600">Tiles</span>
+              <span className="text-xs font-medium text-gray-500">Tiles</span>
               <div className="flex gap-0.5">
                 <button
                   onClick={() => setView('list')}

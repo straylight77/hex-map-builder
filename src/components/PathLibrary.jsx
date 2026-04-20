@@ -30,7 +30,7 @@ function modeHint(toolLabel, pathToolMode, isDrawingPath, activePath, hasSelecti
   const tool = toolLabel.toLowerCase();
   if (pathToolMode === 'draw') {
     return isDrawingPath
-      ? `${activePath?.length ?? 0} point${activePath?.length !== 1 ? 's' : ''} — click to extend`
+      ? `${activePath?.length ?? 0} point${activePath?.length !== 1 ? 's' : ''} — double click to finish`
       : `Click a cell to start drawing a ${tool}.`;
   }
   if (pathToolMode === 'select') {
