@@ -37,11 +37,11 @@ export function buildRenderState({
 }) {
   return {
     // Map data
-    tiles:      mapDoc.tiles,
-    features:   mapDoc.features,
-    roads:      mapDoc.roads,
-    rivers:     mapDoc.rivers,
-    dimensions: mapDoc.dimensions,
+    tiles:    mapDoc.tiles,
+    features: mapDoc.features,
+    roads:    mapDoc.roads,
+    rivers:   mapDoc.rivers,
+    bounds:   mapDoc.bounds,
 
     // Viewport
     viewport,
@@ -80,11 +80,11 @@ export function buildRenderState({
  */
 export function buildExportRenderState(mapDoc, viewport) {
   return {
-    tiles:      mapDoc.tiles,
-    features:   mapDoc.features,
-    roads:      mapDoc.roads,
-    rivers:     mapDoc.rivers,
-    dimensions: mapDoc.dimensions,
+    tiles:    mapDoc.tiles,
+    features: mapDoc.features,
+    roads:    mapDoc.roads,
+    rivers:   mapDoc.rivers,
+    bounds:   mapDoc.bounds,
 
     viewport,
     showGrid:   true,

@@ -35,12 +35,33 @@ export const DEFAULT_RIVER_STYLE = {
 };
 
 /**
- * Create a fresh, empty map document.
+ * The map boundary is defined by four explicit edge values in offset/axial space:
+ *
+ *   minR, maxR   — first and last row (axial r coordinate)
+ *   minCol, maxCol — first and last column, where col = q + Math.floor(r / 2)
+ *
+ * This allows asymmetric resizing: adding rows to the north only changes minR,
+ * leaving all other edges and all existing hex coordinates unchanged.
+ *
+ * A hex (q, r) is inside the map when:
+ *   minR <= r <= maxR  AND  minCol <= col <= maxCol
  */
-export function createEmptyMap({ width = 20, height = 20 } = {}) {
+
+/**
+ * Create a fresh, empty map document.
+ * Default size is 20 columns × 20 rows, centered on (0,0).
+ */
+export function createEmptyMap({ cols = 20, rows = 20 } = {}) {
+  const halfC = Math.floor(cols / 2);
+  const halfR = Math.floor(rows / 2);
   return {
     version: '2.0',
-    dimensions: { width, height },
+    bounds: {
+      minR:   -halfR,
+      maxR:    halfR,
+      minCol: -halfC,
+      maxCol:  halfC,
+    },
     tiles: new Map(),
     features: new Map(),
     roads: [],
@@ -75,7 +96,7 @@ export function createRiver(hexPath, styleOverrides = {}) {
 export function serialiseMap(doc) {
   return {
     version: doc.version,
-    dimensions: doc.dimensions,
+    bounds: doc.bounds,
     tiles: Array.from(doc.tiles.entries()),
     features: Array.from(doc.features.entries()),
     roads: doc.roads,
@@ -92,6 +113,20 @@ export function deserialiseMap(raw) {
     tilesEntries = Object.entries(raw.tiles);
   } else {
     tilesEntries = [];
+  }
+
+  // ── Bounds migration ──────────────────────────────────────────────────────
+  // Old saves stored `dimensions: { width, height }` with the map centered on
+  // (0,0). Convert to the new asymmetric bounds format transparently.
+  let bounds;
+  if (raw.bounds) {
+    bounds = raw.bounds;
+  } else {
+    const w = raw.dimensions?.width  ?? 20;
+    const h = raw.dimensions?.height ?? 20;
+    const halfC = Math.floor(w / 2);
+    const halfR = Math.floor(h / 2);
+    bounds = { minR: -halfR, maxR: halfR, minCol: -halfC, maxCol: halfC };
   }
 
   // Migrate roads — add algorithm if missing (saved before this feature)
@@ -117,7 +152,7 @@ export function deserialiseMap(raw) {
 
   return {
     version: '2.0',
-    dimensions: raw.dimensions ?? { width: 20, height: 20 },
+    bounds,
     tiles: new Map(tilesEntries),
     features: new Map(Array.isArray(raw.features) ? raw.features : []),
     roads,

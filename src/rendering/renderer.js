@@ -32,10 +32,18 @@ function drawPathHighlight(ctx, pathObj, haloColor, haloAlpha = 0.55) {
   drawPath(ctx, pathObj.path, pathObj.style);
 }
 
-function isInBounds(q, r, dimensions) {
-  const halfW = dimensions.width / 2;
-  const halfH = dimensions.height / 2;
-  return q >= -halfW && q < halfW && r >= -halfH && r < halfH;
+/**
+ * Check whether axial coordinate (q, r) is within the map bounds.
+ * Uses offset column for a visually rectangular boundary.
+ *
+ * @param {number} q
+ * @param {number} r
+ * @param {{ minR: number, maxR: number, minCol: number, maxCol: number }} bounds
+ */
+function isInBounds(q, r, bounds) {
+  const col = q + Math.floor(r / 2);
+  return r >= bounds.minR && r <= bounds.maxR &&
+         col >= bounds.minCol && col <= bounds.maxCol;
 }
 
 function drawSelectionRing(ctx, x, y, color = '#3b82f6', width = 5) {
@@ -95,7 +103,7 @@ export function renderMap(canvas, state) {
   // ── 0. Out-of-bounds grey fill ────────────────────────────────────────────
   for (let r = minR; r <= maxR; r++) {
     for (let q = minQ; q <= maxQ; q++) {
-      if (isInBounds(q, r, state.dimensions)) continue;
+      if (isInBounds(q, r, state.bounds)) continue;
       const { x, y } = hexToPixel(q, r);
       drawHex(ctx, x, y, HEX_SIZE, '#b0b0b0', false);
     }
@@ -104,7 +112,7 @@ export function renderMap(canvas, state) {
   // ── 1. Tile fills ─────────────────────────────────────────────────────────
   for (let r = minR; r <= maxR; r++) {
     for (let q = minQ; q <= maxQ; q++) {
-      if (!isInBounds(q, r, state.dimensions)) continue;
+      if (!isInBounds(q, r, state.bounds)) continue;
       const { x, y } = hexToPixel(q, r);
       const tile = state.tiles.get(hexKey(q, r));
       if (tile) drawTile(ctx, x, y, tile.type, HEX_SIZE, tile);
@@ -127,7 +135,7 @@ export function renderMap(canvas, state) {
   // ── 4. Water tiles redrawn ────────────────────────────────────────────────
   for (let r = minR; r <= maxR; r++) {
     for (let q = minQ; q <= maxQ; q++) {
-      if (!isInBounds(q, r, state.dimensions)) continue;
+      if (!isInBounds(q, r, state.bounds)) continue;
       const tile = state.tiles.get(hexKey(q, r));
       if (tile && WATER_TILE_IDS.has(tile.type)) {
         const { x, y } = hexToPixel(q, r);
@@ -141,7 +149,7 @@ export function renderMap(canvas, state) {
     for (let r = minR; r <= maxR; r++) {
       for (let q = minQ; q <= maxQ; q++) {
         const { x, y } = hexToPixel(q, r);
-        const inBounds = isInBounds(q, r, state.dimensions);
+        const inBounds = isInBounds(q, r, state.bounds);
         if (inBounds) {
           drawGridHex(ctx, x, y, HEX_SIZE, state.tiles.has(hexKey(q, r)));
         } else {
@@ -182,13 +190,10 @@ export function renderMap(canvas, state) {
   const isPathTool = state.selectedTool === 'road' || state.selectedTool === 'river';
 
   if (state.hoveredHex && ['tile', 'feature', 'road', 'river'].includes(state.selectedTool) &&
-      isInBounds(state.hoveredHex.q, state.hoveredHex.r, state.dimensions)) {
+      isInBounds(state.hoveredHex.q, state.hoveredHex.r, state.bounds)) {
     const hq = state.hoveredHex.q, hr = state.hoveredHex.r;
     const { x, y } = hexToPixel(hq, hr);
 
-    // Draw mode — always highlight
-    // Erase mode — always highlight (red)
-    // Select mode — only highlight if the hex has something selectable
     let shouldHighlight = false;
     let isErase = false;
 
@@ -211,7 +216,6 @@ export function renderMap(canvas, state) {
         shouldHighlight = state.features?.has(hexKey(hq, hr));
       }
     } else if (isPathTool) {
-      // Path draw mode uses hex hover; select/erase use path-level highlights
       if (state.pathToolMode === 'draw') shouldHighlight = true;
     }
 
@@ -221,14 +225,12 @@ export function renderMap(canvas, state) {
   }
 
   // ── 11. Path highlights ───────────────────────────────────────────────────
-  // Erase mode: hovered path gets a red highlight (doesn't disappear)
   if (state.pathToolMode === 'erase' && state.hoveredPathId) {
     const allPaths = [...(state.roads ?? []), ...(state.rivers ?? [])];
     const hovered = allPaths.find(p => p.id === state.hoveredPathId);
     if (hovered) drawPathHighlight(ctx, hovered, '#ef4444', 0.7);
   }
 
-  // Select mode: hovered path (not yet selected) — blue
   if (state.pathToolMode === 'select' && state.hoveredPathId &&
       state.hoveredPathId !== state.selectedPathId) {
     const allPaths = [...(state.roads ?? []), ...(state.rivers ?? [])];
@@ -236,7 +238,6 @@ export function renderMap(canvas, state) {
     if (hovered) drawPathHighlight(ctx, hovered, '#3b82f6', 0.6);
   }
 
-  // Selected path (blue)
   if (state.selectedPathId) {
     const allPaths = [...(state.roads ?? []), ...(state.rivers ?? [])];
     const selected = allPaths.find(p => p.id === state.selectedPathId);

@@ -41,7 +41,7 @@ export function MenuBar({
               <MenuDivider />
               <MenuItem onClick={() => { onExportPNG(); close(); }}>Export as PNG</MenuItem>
               <MenuDivider />
-              <MenuItem onClick={() => { onExpandMap(); close(); }}>Expand Map…</MenuItem>
+              <MenuItem onClick={() => { onExpandMap(); close(); }}>Resize Map…</MenuItem>
             </MenuDropdown>
           )}
         </div>
@@ -108,35 +108,59 @@ function MenuFileInput({ onFile, children }) {
 }
 
 // ---------------------------------------------------------------------------
-// ExpandDialog
+// ExpandDialog (Resize Map)
 // ---------------------------------------------------------------------------
 
+/**
+ * Resize Map dialog.
+ *
+ * Positive values expand the map outward in that direction.
+ * Negative values contract it inward.
+ * The data-loss safety check lives in useMapData.resizeMap — this dialog
+ * just collects the numbers and calls onApply.
+ *
+ * Prop names are unchanged (isOpen / onClose / onApply) so App.jsx needs
+ * no changes.
+ */
 export function ExpandDialog({ isOpen, onClose, onApply }) {
-  const [values, setValues] = useState({ north: 5, south: 5, east: 5, west: 5 });
+  const [values, setValues] = useState({ north: 0, south: 0, east: 0, west: 0 });
 
   if (!isOpen) return null;
 
   const set = (dir, raw) => {
-    const n = parseInt(raw) || 0;
-    setValues(prev => ({ ...prev, [dir]: Math.max(0, n) }));
+    const n = parseInt(raw);
+    setValues(prev => ({ ...prev, [dir]: isNaN(n) ? 0 : n }));
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-80 shadow-xl">
-        <h3 className="text-lg font-semibold mb-4">Expand Map</h3>
+        <h3 className="text-lg font-semibold mb-1">Resize Map</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          Positive values add rows/columns in that direction. Negative values
+          remove them. Contraction is blocked if any data would be lost.
+        </p>
 
         <div className="space-y-3">
           {['north', 'south', 'east', 'west'].map(dir => (
             <div key={dir} className="flex items-center justify-between">
-              <label className="capitalize text-sm">{dir}:</label>
-              <input
-                type="number"
-                value={values[dir]}
-                onChange={e => set(dir, e.target.value)}
-                min="0"
-                className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-              />
+              <label className="capitalize text-sm w-12">{dir}</label>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => set(dir, values[dir] - 1)}
+                  className="w-7 h-7 rounded border border-gray-300 hover:bg-gray-100 text-sm font-medium"
+                >−</button>
+                <input
+                  type="number"
+                  value={values[dir]}
+                  onChange={e => set(dir, e.target.value)}
+                  className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                />
+                <button
+                  onClick={() => set(dir, values[dir] + 1)}
+                  className="w-7 h-7 rounded border border-gray-300 hover:bg-gray-100 text-sm font-medium"
+                >+</button>
+              </div>
             </div>
           ))}
         </div>
@@ -166,12 +190,17 @@ export function ExpandDialog({ isOpen, onClose, onApply }) {
 
 /**
  * Bottom status strip.
- * `scale` is now the display percentage (e.g. 100 means "normal/home zoom").
+ *
+ * Receives `bounds` ({ minR, maxR, minCol, maxCol }) and derives the
+ * displayed column × row count from it.
+ * `scale` is the display percentage (100 = home zoom).
  */
-export function StatusBar({ dimensions, scale }) {
+export function StatusBar({ bounds, scale }) {
+  const cols = bounds.maxCol - bounds.minCol;
+  const rows = bounds.maxR   - bounds.minR;
   return (
     <div className="bg-white border-t border-gray-300 px-4 py-2 flex items-center gap-6 text-sm text-gray-600">
-      <span>Map: {dimensions.width}×{dimensions.height}</span>
+      <span>Map: {cols}×{rows}</span>
       <span>Zoom: {scale}%</span>
     </div>
   );

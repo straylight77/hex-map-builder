@@ -323,8 +323,6 @@ export default function App() {
   }, [isPathTool, path, handleCommitPath]);
 
   // Attach wheel listener as non-passive so preventDefault works on all browsers.
-  // React's synthetic onWheel is passive by default, which blocks preventDefault
-  // and allows trackpad scroll to move the page behind the canvas.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -343,14 +341,16 @@ export default function App() {
   }, [mapData, viewport]);
 
   const handleExportPNG = useCallback(() => {
-    const { dimensions } = mapData.mapDoc;
+    const { bounds } = mapData.mapDoc;
+    const cols = bounds.maxCol - bounds.minCol;
+    const rows = bounds.maxR   - bounds.minR;
     const HEX_W  = HEX_SIZE * Math.sqrt(3);
     const HEX_H  = HEX_SIZE * 2;
     const padding = 2;
 
     const exportCanvas = document.createElement('canvas');
-    exportCanvas.width  = (dimensions.width  + padding) * HEX_W;
-    exportCanvas.height = (dimensions.height + padding) * HEX_H * 0.75;
+    exportCanvas.width  = (cols + padding) * HEX_W;
+    exportCanvas.height = (rows + padding) * HEX_H * 0.75;
 
     renderMap(exportCanvas, buildExportRenderState(mapData.mapDoc, { x: 0, y: 0, scale: 1 }));
 
@@ -471,7 +471,7 @@ export default function App() {
       </div>
 
       <StatusBar
-        dimensions={mapData.mapDoc.dimensions}
+        bounds={mapData.mapDoc.bounds}
         scale={displayZoomPercent}
       />
 

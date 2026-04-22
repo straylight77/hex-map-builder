@@ -12,6 +12,20 @@ import { mergeStyle } from '../utils/styleUtils.js';
 const AUTOSAVE_KEY      = 'hexmap-autosave';
 const AUTOSAVE_DELAY_MS = 1000;
 
+/**
+ * Check whether axial coordinate (q, r) is within the given bounds.
+ * Uses offset column so the boundary is visually rectangular.
+ *
+ * @param {number} q
+ * @param {number} r
+ * @param {{ minR: number, maxR: number, minCol: number, maxCol: number }} bounds
+ */
+function isInBounds(q, r, bounds) {
+  const col = q + Math.floor(r / 2);
+  return r >= bounds.minR && r <= bounds.maxR &&
+         col >= bounds.minCol && col <= bounds.maxCol;
+}
+
 export function useMapData() {
   const [mapDoc, setMapDoc] = useState(() => {
     try {
@@ -37,17 +51,10 @@ export function useMapData() {
   const placeTile = useCallback((q, r, tileType, extraData = {}) => {
     const key = hexKey(q, r);
     setMapDoc(prev => {
+      if (!isInBounds(q, r, prev.bounds)) return prev;
       const tiles = new Map(prev.tiles);
       tiles.set(key, { type: tileType, ...extraData });
-      // Auto-expand when painting near the boundary
-      const { width, height } = prev.dimensions;
-      const halfW = width / 2;
-      const halfH = height / 2;
-      const dimensions =
-        Math.abs(q) >= halfW - 1 || Math.abs(r) >= halfH - 1
-          ? { width: width + 5, height: height + 5 }
-          : prev.dimensions;
-      return { ...prev, tiles, dimensions };
+      return { ...prev, tiles };
     });
   }, []);
 
@@ -135,15 +142,91 @@ export function useMapData() {
 
   const clearMap = useCallback(() => setMapDoc(createEmptyMap()), []);
 
-  const expandMap = useCallback(({ north = 0, south = 0, east = 0, west = 0 }) => {
-    setMapDoc(prev => ({
-      ...prev,
-      dimensions: {
-        width:  prev.dimensions.width  + east + west,
-        height: prev.dimensions.height + north + south,
-      },
-    }));
+  /**
+   * Resize the map by moving individual edges.
+   *
+   * Positive values expand outward; negative values contract inward.
+   *   north (positive) → minR decreases (adds rows above)
+   *   south (positive) → maxR increases (adds rows below)
+   *   east  (positive) → maxCol increases (adds columns to the right)
+   *   west  (positive) → minCol decreases (adds columns to the left)
+   *
+   * When contracting, all tiles / features / road & river waypoints are
+   * checked against the new bounds. If any data would be lost the resize is
+   * blocked and the user is alerted.
+   *
+   * @param {{ north: number, south: number, east: number, west: number }} deltas
+   */
+  const resizeMap = useCallback(({ north = 0, south = 0, east = 0, west = 0 }) => {
+    setMapDoc(prev => {
+      const newBounds = {
+        minR:   prev.bounds.minR   - north,
+        maxR:   prev.bounds.maxR   + south,
+        minCol: prev.bounds.minCol - west,
+        maxCol: prev.bounds.maxCol + east,
+      };
+
+      // Enforce minimum 1 row and 1 column
+      if (newBounds.maxR   < newBounds.minR)   newBounds.maxR   = newBounds.minR;
+      if (newBounds.maxCol < newBounds.minCol) newBounds.maxCol = newBounds.minCol;
+
+      // Only run data-loss check when contracting in any direction
+      const contracting = north < 0 || south < 0 || east < 0 || west < 0;
+
+      if (contracting) {
+        for (const [key] of prev.tiles) {
+          const [q, r] = key.split(',').map(Number);
+          if (!isInBounds(q, r, newBounds)) {
+            alert(
+              'Resize blocked: some tiles fall outside the new boundary. ' +
+              'Delete them first, then resize.'
+            );
+            return prev;
+          }
+        }
+
+        for (const [key] of prev.features) {
+          const [q, r] = key.split(',').map(Number);
+          if (!isInBounds(q, r, newBounds)) {
+            alert(
+              'Resize blocked: some features fall outside the new boundary. ' +
+              'Delete them first, then resize.'
+            );
+            return prev;
+          }
+        }
+
+        for (const road of prev.roads) {
+          for (const { q, r } of road.path) {
+            if (!isInBounds(q, r, newBounds)) {
+              alert(
+                'Resize blocked: one or more roads have waypoints outside the new boundary. ' +
+                'Delete them first, then resize.'
+              );
+              return prev;
+            }
+          }
+        }
+
+        for (const river of prev.rivers) {
+          for (const { q, r } of river.path) {
+            if (!isInBounds(q, r, newBounds)) {
+              alert(
+                'Resize blocked: one or more rivers have waypoints outside the new boundary. ' +
+                'Delete them first, then resize.'
+              );
+              return prev;
+            }
+          }
+        }
+      }
+
+      return { ...prev, bounds: newBounds };
+    });
   }, []);
+
+  // Keep expandMap as an alias so App.jsx needs no changes
+  const expandMap = resizeMap;
 
   // ── File I/O ──────────────────────────────────────────────────────────────
 
@@ -179,7 +262,7 @@ export function useMapData() {
     placeTile, eraseTile,
     placeFeature, removeFeature, updateFeature,
     commitRoad, commitRiver, deleteRoad, deleteRiver, updateRoad, updateRiver,
-    clearMap, expandMap,
+    clearMap, expandMap, resizeMap,
     saveToFile, loadFromFile,
   };
 }
