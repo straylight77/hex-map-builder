@@ -64,6 +64,8 @@ export default function App() {
     ? mapData.mapDoc.tiles.get(hexKey(tile.selectedHex.q, tile.selectedHex.r)) ?? null
     : null;
 
+
+
   // ── Canvas render ──────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -473,6 +475,7 @@ export default function App() {
       <StatusBar
         bounds={mapData.mapDoc.bounds}
         scale={displayZoomPercent}
+        hoveredHex={hoveredHex}
       />
 
       <ExpandDialog

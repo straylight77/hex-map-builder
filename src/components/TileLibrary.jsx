@@ -12,11 +12,11 @@ const MODES = [
   { id: 'erase',  icon: <Eraser size={14} />,         label: 'Erase'  },
 ];
 
-function modeHint(tileToolMode, hasSelection) {
+function modeHint(tileToolMode, hasSelection, selectedHex) {
   if (tileToolMode === 'draw')   return 'Click or drag to paint tiles.';
   if (tileToolMode === 'erase')  return 'Click or drag to erase tiles.';
-  if (tileToolMode === 'select') return hasSelection
-    ? 'Tile selected — edit below.'
+  if (tileToolMode === 'select') return hasSelection && selectedHex
+    ? `Tile (${selectedHex.q}, ${selectedHex.r}) selected — edit below.`
     : 'Click a painted hex to select it.';
   return null;
 }
@@ -90,7 +90,7 @@ export function TileLibrary({
       ? (selectedHexCustomColor ?? customTileColor)
       : customTileColor;
 
-  const hint = modeHint(tileToolMode, hasSelection);
+  const hint = modeHint(tileToolMode, hasSelection, selectedHex);
   const showPicker = tileToolMode === 'draw' || (tileToolMode === 'select' && hasSelection);
 
   return (

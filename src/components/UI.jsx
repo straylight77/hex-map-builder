@@ -111,17 +111,6 @@ function MenuFileInput({ onFile, children }) {
 // ExpandDialog (Resize Map)
 // ---------------------------------------------------------------------------
 
-/**
- * Resize Map dialog.
- *
- * Positive values expand the map outward in that direction.
- * Negative values contract it inward.
- * The data-loss safety check lives in useMapData.resizeMap — this dialog
- * just collects the numbers and calls onApply.
- *
- * Prop names are unchanged (isOpen / onClose / onApply) so App.jsx needs
- * no changes.
- */
 export function ExpandDialog({ isOpen, onClose, onApply }) {
   const [values, setValues] = useState({ north: 0, south: 0, east: 0, west: 0 });
 
@@ -194,14 +183,26 @@ export function ExpandDialog({ isOpen, onClose, onApply }) {
  * Receives `bounds` ({ minR, maxR, minCol, maxCol }) and derives the
  * displayed column × row count from it.
  * `scale` is the display percentage (100 = home zoom).
+ * `hoveredHex` is the currently highlighted hex { q, r } or null.
  */
-export function StatusBar({ bounds, scale }) {
+function isInBounds(hex, bounds) {
+  if (!hex) return false;
+  const col = hex.q + Math.floor(hex.r / 2);
+  return hex.r >= bounds.minR && hex.r <= bounds.maxR &&
+         col >= bounds.minCol && col <= bounds.maxCol;
+}
+
+export function StatusBar({ bounds, scale, hoveredHex }) {
   const cols = bounds.maxCol - bounds.minCol;
   const rows = bounds.maxR   - bounds.minR;
+  const hexLabel = isInBounds(hoveredHex, bounds)
+    ? `(${hoveredHex.q}, ${hoveredHex.r})`
+    : `(-, -)`;
   return (
     <div className="bg-white border-t border-gray-300 px-4 py-2 flex items-center gap-6 text-sm text-gray-600">
       <span>Map: {cols}×{rows}</span>
       <span>Zoom: {scale}%</span>
+      <span>Hex: {hexLabel}</span>
     </div>
   );
 }

@@ -15,11 +15,11 @@ const MODES = [
   { id: 'erase',  icon: <Eraser size={14} />,         label: 'Erase'  },
 ];
 
-function modeHint(featureToolMode, hasSelection) {
+function modeHint(featureToolMode, hasSelection, selectedFeatureHex) {
   if (featureToolMode === 'draw')   return 'Click a hex to place a feature.';
   if (featureToolMode === 'erase')  return 'Click a hex to erase its feature.';
-  if (featureToolMode === 'select') return hasSelection
-    ? 'Feature selected — edit below.'
+  if (featureToolMode === 'select') return hasSelection && selectedFeatureHex
+    ? `Feature (${selectedFeatureHex.q}, ${selectedFeatureHex.r}) selected — edit below.`
     : 'Click a hex with a feature to select it.';
   return null;
 }
@@ -111,7 +111,7 @@ export function FeatureLibrary({
   const displayRotation  = featureToolMode === 'select' && hasSelection ? selectedFeatureData.rotation : featureRotation;
   const displayFeatureId = featureToolMode === 'select' && hasSelection ? selectedFeatureData.id       : selectedFeatureId;
 
-  const hint = modeHint(featureToolMode, hasSelection);
+  const hint = modeHint(featureToolMode, hasSelection, selectedFeatureHex);
   const showStyleControls = featureToolMode === 'draw' || (featureToolMode === 'select' && hasSelection);
   const showGallery       = featureToolMode === 'draw' || (featureToolMode === 'select' && hasSelection);
 
