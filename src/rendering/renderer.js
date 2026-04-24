@@ -63,6 +63,37 @@ function drawSelectionRing(ctx, x, y, color = '#3b82f6', width = 5) {
 }
 
 /**
+ * Draw the axial coordinate label inside the upper portion of a hex cell.
+ * The label is positioned about 1/3 of the way down from the top vertex.
+ */
+function drawHexCoord(ctx, x, y, q, r) {
+  const label = `(${q},${r})`;
+
+  // Position in upper third of hex — top vertex is at y - HEX_SIZE,
+  // center is at y, so place label roughly 55% up from center toward top.
+  const labelY = y - HEX_SIZE * 0.48;
+
+  // Font size scales with hex size; chosen to fit comfortably within the width.
+  const fontSize = Math.round(HEX_SIZE * 0.20);
+
+  ctx.save();
+  ctx.font = `${fontSize}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Subtle white halo for legibility over any tile color
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+  ctx.lineWidth = fontSize * 0.35;
+  ctx.lineJoin = 'round';
+  ctx.strokeText(label, x, labelY);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillText(label, x, labelY);
+
+  ctx.restore();
+}
+
+/**
  * Render order (back to front):
  *   0.  Grey fill for out-of-bounds hexes
  *   1.  Tile fills + patterns
@@ -70,12 +101,13 @@ function drawSelectionRing(ctx, x, y, color = '#3b82f6', width = 5) {
  *   3.  Committed roads
  *   4.  Water tiles redrawn
  *   5.  Grid lines
- *   6.  In-progress path preview
- *   7.  Features
- *   8.  Selected feature hex highlight
- *   9.  Selected tile hex highlight
- *   10. Hex hover highlight
- *   11. Path hover / selection highlights
+ *   6.  Coordinate labels (optional)
+ *   7.  In-progress path preview
+ *   8.  Features
+ *   9.  Selected feature hex highlight
+ *   10. Selected tile hex highlight
+ *   11. Hex hover highlight
+ *   12. Path hover / selection highlights
  */
 export function renderMap(canvas, state) {
   if (!canvas) return;
@@ -159,12 +191,23 @@ export function renderMap(canvas, state) {
     }
   }
 
-  // ── 6. Path preview ───────────────────────────────────────────────────────
+  // ── 6. Coordinate labels ──────────────────────────────────────────────────
+  if (state.showCoords) {
+    for (let r = minR; r <= maxR; r++) {
+      for (let q = minQ; q <= maxQ; q++) {
+        if (!isInBounds(q, r, state.bounds)) continue;
+        const { x, y } = hexToPixel(q, r);
+        drawHexCoord(ctx, x, y, q, r);
+      }
+    }
+  }
+
+  // ── 7. Path preview ───────────────────────────────────────────────────────
   if (state.activePath?.length > 0 && state.activePathStyle) {
     drawPathPreview(ctx, state.activePath, state.activePathStyle);
   }
 
-  // ── 7. Features ───────────────────────────────────────────────────────────
+  // ── 8. Features ───────────────────────────────────────────────────────────
   for (let r = minR; r <= maxR; r++) {
     for (let q = minQ; q <= maxQ; q++) {
       const feature = state.features?.get(hexKey(q, r));
@@ -174,19 +217,19 @@ export function renderMap(canvas, state) {
     }
   }
 
-  // ── 8. Selected feature hex highlight ─────────────────────────────────────
+  // ── 9. Selected feature hex highlight ─────────────────────────────────────
   if (state.selectedFeatureHex && state.selectedTool === 'feature' && state.featureToolMode === 'select') {
     const { x, y } = hexToPixel(state.selectedFeatureHex.q, state.selectedFeatureHex.r);
     drawSelectionRing(ctx, x, y, '#3b82f6', 5);
   }
 
-  // ── 9. Selected tile hex highlight ────────────────────────────────────────
+  // ── 10. Selected tile hex highlight ────────────────────────────────────────
   if (state.selectedTileHex && state.selectedTool === 'tile' && state.tileToolMode === 'select') {
     const { x, y } = hexToPixel(state.selectedTileHex.q, state.selectedTileHex.r);
     drawSelectionRing(ctx, x, y, '#3b82f6', 5);
   }
 
-  // ── 10. Hex hover highlight ───────────────────────────────────────────────
+  // ── 11. Hex hover highlight ───────────────────────────────────────────────
   const isPathTool = state.selectedTool === 'road' || state.selectedTool === 'river';
 
   if (state.hoveredHex && ['tile', 'feature', 'road', 'river'].includes(state.selectedTool) &&
@@ -224,7 +267,7 @@ export function renderMap(canvas, state) {
     }
   }
 
-  // ── 11. Path highlights ───────────────────────────────────────────────────
+  // ── 12. Path highlights ───────────────────────────────────────────────────
   if (state.pathToolMode === 'erase' && state.hoveredPathId) {
     const allPaths = [...(state.roads ?? []), ...(state.rivers ?? [])];
     const hovered = allPaths.find(p => p.id === state.hoveredPathId);

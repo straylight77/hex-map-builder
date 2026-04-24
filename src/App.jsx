@@ -17,6 +17,7 @@ export default function App() {
   const canvasRef      = useRef(null);
   const isPaintingRef  = useRef(false);
   const [showGrid, setShowGrid]               = useState(true);
+  const [showCoords, setShowCoords]           = useState(false);
   const [showExpandDialog, setShowExpandDialog] = useState(false);
   const [hoveredHex, setHoveredHex]           = useState(null);
 
@@ -73,6 +74,7 @@ export default function App() {
       mapDoc:     mapData.mapDoc,
       viewport:   viewport.viewport,
       showGrid,
+      showCoords,
       hoveredHex,
       selectedTool,
       tile,
@@ -85,6 +87,7 @@ export default function App() {
     mapData.mapDoc,
     viewport.viewport,
     showGrid,
+    showCoords,
     hoveredHex,
     selectedTool,
     tile,
@@ -384,6 +387,8 @@ export default function App() {
       <MenuBar
         showGrid={showGrid}
         onToggleGrid={() => setShowGrid(v => !v)}
+        showCoords={showCoords}
+        onToggleCoords={() => setShowCoords(v => !v)}
         onNewMap={handleNewMap}
         onSave={mapData.saveToFile}
         onLoad={(file) => mapData.loadFromFile(file, viewport.setViewport)}

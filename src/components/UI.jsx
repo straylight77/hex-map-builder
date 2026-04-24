@@ -7,6 +7,8 @@ import { useState } from 'react';
 export function MenuBar({
   showGrid,
   onToggleGrid,
+  showCoords,
+  onToggleCoords,
   onNewMap,
   onSave,
   onLoad,
@@ -57,6 +59,9 @@ export function MenuBar({
             <MenuDropdown>
               <MenuItem onClick={() => { onToggleGrid(); close(); }}>
                 {showGrid ? '✓ ' : '\u00a0\u00a0'}Show Grid
+              </MenuItem>
+              <MenuItem onClick={() => { onToggleCoords(); close(); }}>
+                {showCoords ? '✓ ' : '\u00a0\u00a0'}Show Coordinates
               </MenuItem>
             </MenuDropdown>
           )}

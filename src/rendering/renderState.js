@@ -14,6 +14,7 @@
  * @param {object} p.mapDoc         — from useMapData
  * @param {object} p.viewport       — { x, y, scale }
  * @param {boolean} p.showGrid
+ * @param {boolean} p.showCoords
  * @param {object|null} p.hoveredHex
  * @param {string} p.selectedTool
  * @param {object} p.tile           — useTileTools instance
@@ -27,6 +28,7 @@ export function buildRenderState({
   mapDoc,
   viewport,
   showGrid,
+  showCoords,
   hoveredHex,
   selectedTool,
   tile,
@@ -46,6 +48,7 @@ export function buildRenderState({
     // Viewport
     viewport,
     showGrid,
+    showCoords,
     hoveredHex,
 
     // Tool identity
@@ -76,9 +79,10 @@ export function buildRenderState({
  *
  * @param {object} mapDoc
  * @param {{ x:number, y:number, scale:number }} viewport
+ * @param {boolean} [showCoords=false]
  * @returns {RenderState}
  */
-export function buildExportRenderState(mapDoc, viewport) {
+export function buildExportRenderState(mapDoc, viewport, showCoords = false) {
   return {
     tiles:    mapDoc.tiles,
     features: mapDoc.features,
@@ -88,6 +92,7 @@ export function buildExportRenderState(mapDoc, viewport) {
 
     viewport,
     showGrid:   true,
+    showCoords,
     hoveredHex: null,
 
     selectedTool: 'tile',
