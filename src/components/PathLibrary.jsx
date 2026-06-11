@@ -1,7 +1,6 @@
 import { Pencil, MousePointer2, Eraser } from 'lucide-react';
 import { SwatchColorPicker, ROAD_SWATCHES, RIVER_SWATCHES } from './SwatchColorPicker.jsx';
-
-const PANEL_WIDTH = 268;
+import { CollapsiblePanel } from './CollapsiblePanel.jsx';
 
 const DASH_OPTIONS = [
   { label: 'Solid',  dash: []        },
@@ -43,6 +42,8 @@ function modeHint(toolLabel, pathToolMode, isDrawingPath, activePath, hasSelecti
 }
 
 export function PathLibrary({
+  collapsed,
+  onToggleCollapse,
   toolLabel,
   isRiver,
   pathToolMode,
@@ -74,7 +75,7 @@ export function PathLibrary({
   const hint       = modeHint(toolLabel, pathToolMode, isDrawingPath, activePath, hasSelection);
 
   return (
-    <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
+    <CollapsiblePanel collapsed={collapsed} onToggle={onToggleCollapse}>
       <div className="bg-white border-l border-gray-300 h-full flex flex-col">
 
         {/* Draw / Select / Erase */}
@@ -288,6 +289,6 @@ export function PathLibrary({
           )}
         </div>
       </div>
-    </div>
+    </CollapsiblePanel>
   );
 }

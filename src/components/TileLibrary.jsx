@@ -3,8 +3,7 @@ import { Pencil, MousePointer2, Eraser, LayoutList, LayoutGrid } from 'lucide-re
 import { ORDERED_TILES } from '../data/terrain.js';
 import { TilePreview } from './TilePreview.jsx';
 import { SwatchColorPicker, TILE_SWATCHES } from './SwatchColorPicker.jsx';
-
-export const PANEL_WIDTH = 268;
+import { CollapsiblePanel } from './CollapsiblePanel.jsx';
 
 const MODES = [
   { id: 'draw',   icon: <Pencil size={14} />,        label: 'Draw'   },
@@ -66,6 +65,8 @@ function TileItem({ terrain, isActive, customColor, onClick, view }) {
 }
 
 export function TileLibrary({
+  collapsed,
+  onToggleCollapse,
   tileToolMode,
   onSetTileMode,
   selectedTile,
@@ -94,7 +95,7 @@ export function TileLibrary({
   const showPicker = tileToolMode === 'draw' || (tileToolMode === 'select' && hasSelection);
 
   return (
-    <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
+    <CollapsiblePanel collapsed={collapsed} onToggle={onToggleCollapse}>
       <div className="bg-white border-l border-gray-300 h-full flex flex-col">
 
         {/* Draw / Select / Erase */}
@@ -237,6 +238,6 @@ export function TileLibrary({
 
         {tileToolMode === 'erase' && <div className="flex-1" />}
       </div>
-    </div>
+    </CollapsiblePanel>
   );
 }

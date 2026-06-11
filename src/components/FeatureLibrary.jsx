@@ -6,8 +6,7 @@ import {
   DEFAULT_FEATURE_COLOR,
 } from '../data/features.js';
 import { SwatchColorPicker, FEATURE_SWATCHES } from './SwatchColorPicker.jsx';
-
-const PANEL_WIDTH = 268;
+import { CollapsiblePanel } from './CollapsiblePanel.jsx';
 
 const MODES = [
   { id: 'draw',   icon: <Pencil size={14} />,        label: 'Draw'   },
@@ -88,6 +87,8 @@ function FeatureItem({ feature, isActive, color, onClick, view }) {
 }
 
 export function FeatureLibrary({
+  collapsed,
+  onToggleCollapse,
   featureToolMode,
   onSetFeatureMode,
   selectedFeatureId,
@@ -116,7 +117,7 @@ export function FeatureLibrary({
   const showGallery       = featureToolMode === 'draw' || (featureToolMode === 'select' && hasSelection);
 
   return (
-    <div className="absolute right-0 top-0 bottom-0 z-10" style={{ width: PANEL_WIDTH }}>
+    <CollapsiblePanel collapsed={collapsed} onToggle={onToggleCollapse}>
       <div className="bg-white border-l border-gray-300 h-full flex flex-col">
 
         {/* Draw / Select / Erase */}
@@ -312,6 +313,6 @@ export function FeatureLibrary({
 
         {featureToolMode === 'erase' && <div className="flex-1" />}
       </div>
-    </div>
+    </CollapsiblePanel>
   );
 }

@@ -20,6 +20,7 @@ export default function App() {
   const [showCoords, setShowCoords]           = useState(false);
   const [showExpandDialog, setShowExpandDialog] = useState(false);
   const [hoveredHex, setHoveredHex]           = useState(null);
+  const [panelCollapsed, setPanelCollapsed]   = useState(false);
 
   const viewport = useViewport();
   const mapData  = useMapData();
@@ -424,6 +425,8 @@ export default function App() {
         {/* ── Tile panel ── */}
         {isTileTool && (
           <TileLibrary
+            collapsed={panelCollapsed}
+            onToggleCollapse={() => setPanelCollapsed(v => !v)}
             tileToolMode={tile.mode}
             onSetTileMode={tile.setMode}
             selectedTile={tile.selectedTile}
@@ -440,6 +443,8 @@ export default function App() {
         {/* ── Feature panel ── */}
         {isFeatureTool && (
           <FeatureLibrary
+            collapsed={panelCollapsed}
+            onToggleCollapse={() => setPanelCollapsed(v => !v)}
             featureToolMode={feature.mode}
             onSetFeatureMode={feature.setMode}
             selectedFeatureId={feature.selectedId}
@@ -459,6 +464,8 @@ export default function App() {
         {/* ── Road / River panel ── */}
         {isPathTool && (
           <PathLibrary
+            collapsed={panelCollapsed}
+            onToggleCollapse={() => setPanelCollapsed(v => !v)}
             toolLabel={selectedTool === 'road' ? 'Road' : 'River'}
             isRiver={selectedTool === 'river'}
             pathToolMode={path.mode}
